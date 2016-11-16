@@ -1,72 +1,57 @@
 #include "Utility.h"
 #include "Graph.h"
 
-Graph::Graph(const char *_dir) {
-	dir = string(_dir);
-
-	n = m = 0;
-
-	eps_a2 = eps_b2 = miu = 0;
-
-	pstart = NULL;
-	edges = NULL;
-	reverse = NULL;
-	min_cn = NULL;
-
-	cid = NULL;
-
-	degree = NULL;
-	effective_degree = NULL;
-	similar_degree = NULL;
-
-	pa = NULL;
-	rank = NULL;
-}
+Graph::Graph(const char *_dir)
+: dir(_dir ? _dir : ""), n(0), m(0), eps_a2(0), eps_b2(0), miu(0)
+, pstart(nullptr), edges(nullptr), reverse(nullptr), min_cn(nullptr)
+, pa(nullptr), rank(nullptr), cid(nullptr)
+, degree(nullptr), similar_degree(nullptr), effective_degree(nullptr)
+,noncore_cluster()  {}
 
 Graph::~Graph() {
-	if(pstart != NULL) {
+	if(pstart) {
 		delete[] pstart;
-		pstart = NULL;
+		pstart = nullptr;
 	}
-	if(edges != NULL) {
+	if(edges) {
 		delete[] edges;
-		edges = NULL;
+		edges = nullptr;
 	}
-	if(reverse != NULL) {
+	if(reverse) {
 		delete[] reverse;
-		reverse = NULL;
+		reverse = nullptr;
 	}
-	if(min_cn != NULL) {
+	if(min_cn) {
 		delete[] min_cn;
-		min_cn = NULL;
+		min_cn = nullptr;
 	}
-	if(cid != NULL) {
+	if(cid) {
 		delete[] cid;
-		cid = NULL;
+		cid = nullptr;
 	}
-	if(degree != NULL) {
+	if(degree) {
 		delete[] degree;
-		degree = NULL;
+		degree = nullptr;
 	}
-	if(effective_degree != NULL) {
+	if(effective_degree) {
 		delete[] effective_degree;
-		effective_degree = NULL;
+		effective_degree = nullptr;
 	}
-	if(similar_degree != NULL) {
+	if(similar_degree) {
 		delete[] similar_degree;
-		similar_degree = NULL;
+		similar_degree = nullptr;
 	}
-	if(pa != NULL) {
+	if(pa) {
 		delete[] pa;
-		pa = NULL;
+		pa = nullptr;
 	}
-	if(rank != NULL) {
+	if(rank) {
 		delete[] rank;
-		rank = NULL;
+		rank = nullptr;
 	}
 }
 
-void Graph::read_graph() {
+void Graph::read_graph(const char *filename) {
 	FILE *f = open_file((dir + string("/b_degree.bin")).c_str(), "rb");
 
 	int tt;
@@ -80,12 +65,12 @@ void Graph::read_graph() {
 
 	// printf("\tn = %u; m = %u\n", n, m/2);
 
-	degree = new int[n];
-	fread(degree, sizeof(int), n, f);
+	degree = new Degree[n];
+	fread(degree, sizeof(unsigned), n, f);  // ATTENTION: degrees are specified as "unsigned int" in the input file
 
 #ifdef _DEBUG_
 	long long sum = 0;
-	for(ui i = 0;i < n;i ++) sum += degree[i];
+	for(Id i = 0;i < n;i ++) sum += degree[i];
 	if(sum != m) printf("WA input graph\n");
 #endif
 
@@ -93,20 +78,26 @@ void Graph::read_graph() {
 
 	f = open_file((dir + string("/b_adj.bin")).c_str(), "rb");
 
-	if(pstart == NULL) pstart = new ui[n+1];
-	if(edges == NULL) edges = new int[m];
-	if(reverse == NULL) reverse = new ui[m];
-	if(min_cn == NULL) min_cn = new int[m];
+	if(!pstart)
+		pstart = new Id[n+1];
+	if(!edges)
+		edges = new Id[m];
+	if(!reverse)
+		reverse = new Id[m];
+	if(!min_cn)
+		min_cn = new int[m];
 	memset(min_cn, 0, sizeof(int)*m);
 
-	int *buf = new int[n];
+	Degree *buf = new Degree[n];
 
 	pstart[0] = 0;
-	for(ui i = 0;i < n;i ++) {
+	for(Id i = 0; i < n; i++) {
 		//printf("%d %d\n", i, degree[i]);
-		if(degree[i] > 0) fread(buf, sizeof(int), degree[i], f);
+		if(degree[i] > 0)
+			fread(buf, sizeof(Degree), degree[i], f);
 
-		for(ui j = 0;j < degree[i];j ++) edges[pstart[i] + j] = buf[j];
+		for(Degree j = 0; j < degree[i]; j++)
+			edges[pstart[i] + j] = buf[j];
 
 		pstart[i+1] = pstart[i] + degree[i];
 
@@ -117,8 +108,8 @@ void Graph::read_graph() {
 
 	fclose(f);
 
-	for(ui i = 0;i < n;i ++) {
-		for(ui j = pstart[i];j < pstart[i+1];j ++) {
+	for(Id i = 0;i < n;i ++) {
+		for(Id j = pstart[i];j < pstart[i+1];j ++) {
 			if(edges[j] == i) {
 				printf("Self loop\n");
 				//exit(1);
@@ -131,36 +122,43 @@ void Graph::read_graph() {
 	}
 }
 
-ui Graph::binary_search(const int *array, ui b, ui e, int val) {
+Id Graph::binary_search(const Id *edges, Id b, Id e, Id val) {
 #ifdef _DEBUG_
-	if(e < b) printf("??? WA1 in binary_search\n");
+	if(e < b)
+		printf("??? WA1 in binary_search\n");
 #endif
-	-- e;
-	if(array[e] < val) return e+1;
+	if(b == e || edges[e-1] < val)
+		return e;
+	--e;
 	while(b < e) {
-		ui mid = b + (e-b)/2;
-		if(array[mid] >= val) e = mid;
+		Id mid = b + (e-b)/2;
+		if(edges[mid] >= val) e = mid;
 		else b = mid+1;
 	}
 #ifdef _DEBUG_
-	if(array[e] < val) printf("??? WA2 in binary_search\n");
+	if(edges[e] < val)
+		printf("??? WA2 in binary_search\n");
 #endif
 	return e;
 }
 
 void Graph::cluster_noncore_vertices(int eps_a2, int eps_b2, int mu) {
-	if(cid == NULL) cid = new int[n];
-	for(ui i = 0;i < n;i ++) cid[i] = n;
+	if(!cid)
+		cid = new Id[n];
+	for(Id i = 0; i < n; i++)
+		cid[i] = n;
 
-	for(ui i = 0;i < n;i ++) if(similar_degree[i] >= mu) {
-		int x = find_root(i);
-		if(i < cid[x]) cid[x] = i;
-	}
+	for(Id i = 0; i < n; i++)
+		if(similar_degree[i] >= mu) {
+			Id x = find_root(i);
+			if(i < cid[x])
+				cid[x] = i;
+		}
 
 	noncore_cluster.clear();
 	noncore_cluster.reserve(n);
-	for(ui i = 0;i < n;i ++) if(similar_degree[i] >= mu) {
-		for(ui j = pstart[i];j < pstart[i+1];j ++) if(similar_degree[edges[j]] < mu) {
+	for(Id i = 0;i < n;i ++) if(similar_degree[i] >= mu) {
+		for(Id j = pstart[i];j < pstart[i+1];j ++) if(similar_degree[edges[j]] < mu) {
 			if(min_cn[j] >= 0) {
 				min_cn[j] = similar_check_OP(i, j, eps_a2, eps_b2);
 				if(reverse[reverse[j]] != j) printf("WA cluster_noncore\n");
@@ -171,7 +169,8 @@ void Graph::cluster_noncore_vertices(int eps_a2, int eps_b2, int mu) {
 				}
 			}
 
-			if(min_cn[j] == -1) noncore_cluster.pb(mp(cid[pa[i]], edges[j]));
+			if(min_cn[j] == -1)
+				noncore_cluster.push_back(make_pair(cid[pa[i]], edges[j]));
 		}
 	}
 }
@@ -185,13 +184,13 @@ void Graph::output(const char *eps_s, const char *miu) {
 	fprintf(fout, "c/n vertex_id cluster_id\n");
 
 	int mu = atoi(miu);
-	for(ui i = 0;i < n;i ++) if(similar_degree[i] >= mu) {
+	for(Id i = 0;i < n;i ++) if(similar_degree[i] >= mu) {
 		fprintf(fout, "c %d %d\n", i, cid[pa[i]]);
 	}
 
 	sort(noncore_cluster.begin(), noncore_cluster.end());
 	noncore_cluster.erase(unique(noncore_cluster.begin(), noncore_cluster.end()), noncore_cluster.end());
-	for(ui i = 0;i < noncore_cluster.size();i ++) {
+	for(Id i = 0;i < noncore_cluster.size();i ++) {
 		fprintf(fout, "n %d %d\n", noncore_cluster[i].second, noncore_cluster[i].first);
 	}
 
@@ -202,65 +201,69 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 	get_eps(eps_s);
 	miu = _miu;
 
-	if(similar_degree == NULL) similar_degree = new int[n];
-	memset(similar_degree, 0, sizeof(int)*n);
+	if(!similar_degree)
+		similar_degree = new Degree[n];
+	memset(similar_degree, 0, sizeof(Degree)*n);
 
-	if(effective_degree == NULL) effective_degree = new int[n];
-	for(ui i = 0;i < n;i ++) effective_degree[i] = degree[i]-1;
+	if(!effective_degree)
+		effective_degree = new Degree[n];
+	for(Id i = 0;i < n;i ++)
+		effective_degree[i] = degree[i]-1;
 
-	if(pa == NULL) pa = new int[n];
-	if(rank == NULL) rank = new int[n];
-	for(ui i = 0;i < n;i ++) {
+	if(!pa)
+		pa = new Id[n];
+	if(!rank)
+		rank = new int[n];
+	for(Id i = 0;i < n;i ++) {
 		pa[i] = i;
 		rank[i] = 0;
 	}
 
-#ifdef _LINUX_
+#ifdef __unix__
 	struct timeval start;
-	gettimeofday(&start, NULL);
+	gettimeofday(&start, nullptr);
 #else
 	int start = clock();
 #endif
 
-	ui *edge_buf = new ui[n];
+	Id *edge_buf = new Id[n];
 	int *cores = new int[n];
 	int cores_n = 0;
 
 	prune_and_cross_link(eps_a2, eps_b2, miu, cores, cores_n);
 	//printf("\t*** Finished prune and cross link!\n");
 
-#ifdef _LINUX_
+#ifdef __unix__
 	struct timeval end1;
-	gettimeofday(&end1, NULL);
-
-	long long mtime1, seconds1, useconds1;
-	seconds1 = end1.tv_sec - start.tv_sec;
-	useconds1 = end1.tv_usec - start.tv_usec;
-	mtime1 = seconds1*1000000 + useconds1;
+	gettimeofday(&end1, nullptr);
 #else
 	int end1 = clock();
 #endif
 
 	int *bin_head = new int[n];
 	int *bin_next = new int[n];
-	for(ui i = 0;i < n;i ++) bin_head[i] = -1;
+	for(Id i = 0;i < n;i ++)
+		bin_head[i] = -1;
 
 	int max_ed = 0;
-	for(ui i = 0;i < n;i ++) if(effective_degree[i] >= miu) {
-		int ed = effective_degree[i];
-		if(ed > max_ed) max_ed = ed;
-		bin_next[i] = bin_head[ed];
-		bin_head[ed] = i;
-	}
+	for(Id i = 0;i < n;i ++)
+		if(effective_degree[i] >= miu) {
+			Degree ed = effective_degree[i];
+			if(ed > max_ed)
+				max_ed = ed;
+			bin_next[i] = bin_head[ed];
+			bin_head[ed] = i;
+		}
 
 	while(true) {
 		int u = -1;
-		if(cores_n) u = cores[-- cores_n];
+		if(cores_n)
+			u = cores[-- cores_n];
 		else {
 			while(max_ed >= miu&&u == -1) {
 				for(int x = bin_head[max_ed];x != -1;) {
 					int tmp = bin_next[x];
-					int ed = effective_degree[x];
+					Degree ed = effective_degree[x];
 					if(ed == max_ed) {
 						u = x;
 						bin_head[max_ed] = bin_next[x];
@@ -278,23 +281,26 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 				}
 			}
 		}
-		if(u == -1) break;
+		if(u == -1)
+			break;
 
-		int edge_buf_n = 0;
-		for(ui j = pstart[u];j < pstart[u+1];j ++) {
-			if(min_cn[j] == -2) continue;
+		Id edge_buf_n = 0;
+		for(Id j = pstart[u];j < pstart[u+1];j ++) {
+			if(min_cn[j] == -2)
+				continue;
 
-			if(similar_degree[u] < miu||find_root(u) != find_root(edges[j])) edge_buf[edge_buf_n ++] = j;
+			if(similar_degree[u] < miu||find_root(u) != find_root(edges[j]))
+				edge_buf[edge_buf_n ++] = j;
 		}
 
-		int i = 0;
+		Id i = 0;
 		while(similar_degree[u] < miu&&effective_degree[u] >= miu&&i < edge_buf_n) {
-			ui idx = edge_buf[i];
+			Id idx = edge_buf[i];
 			if(min_cn[idx] != -1) {
 #ifdef _DEBUG_
 				if(min_cn[idx] == 0) printf("WA min_cn!\n");
 #endif
-				int v = edges[idx];
+				Id v = edges[idx];
 
 				min_cn[idx] = min_cn[reverse[idx]] = similar_check_OP(u, idx, eps_a2, eps_b2);
 
@@ -318,14 +324,15 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 
 		if(similar_degree[u] < miu) continue;
 
-		for(int j = 0;j < edge_buf_n;j ++) {
-			ui idx = edge_buf[j];
-			if(min_cn[idx] == -1&&similar_degree[edges[idx]] >= miu) my_union(u, edges[idx]);
+		for(Id j = 0;j < edge_buf_n;j ++) {
+			Id idx = edge_buf[j];
+			if(min_cn[idx] == -1&&similar_degree[edges[idx]] >= miu)
+				my_union(u, edges[idx]);
 		}
 
 		while(i < edge_buf_n) {
-			ui idx = edge_buf[i];
-			int v = edges[idx];
+			Id idx = edge_buf[i];
+			Id v = edges[idx];
 			if(min_cn[idx] < 0||similar_degree[v] < miu||find_root(u) == find_root(v)) {
 				++ i;
 				continue;
@@ -350,21 +357,20 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 	}
 	//printf("\t*** Finished clustering core vertices!\n");
 
-	delete[] edge_buf; edge_buf = NULL;
-	delete[] cores; cores = NULL;
-	delete[] bin_head; bin_head = NULL;
-	delete[] bin_next; bin_next = NULL;
+	delete[] edge_buf; edge_buf = nullptr;
+	delete[] cores; cores = nullptr;
+	delete[] bin_head; bin_head = nullptr;
+	delete[] bin_next; bin_next = nullptr;
 
-#ifdef _LINUX_
+#ifdef __unix__
 	struct timeval end;
-	gettimeofday(&end, NULL);
+	gettimeofday(&end, nullptr);
 
-	long long mtime, seconds, useconds;
-	seconds = end.tv_sec - end1.tv_sec;
-	useconds = end.tv_usec - end1.tv_usec;
-	mtime = seconds*1000000 + useconds;
-
-	//printf("Prune time: %lld\nRefine time: %lld\n", mtime1, mtime);
+//	long long seconds, useconds;
+//	seconds = end.tv_sec - end1.tv_sec;
+//	useconds = end.tv_usec - end1.tv_usec;
+//
+//	printf("Prune time: %lld\nRefine time: %lld\n", mtime1, seconds*1000000 + useconds);
 #else
 	int end = clock();
 
@@ -374,13 +380,14 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 	cluster_noncore_vertices(eps_a2, eps_b2, miu);
 }
 
-int Graph::check_common_neighbor(int u, int v, int c) {
+int Graph::check_common_neighbor(Id u, Id v, int c) {
 	int cn = 2;
 
-	if(degree[u] > degree[v]) swap(u,v);
+	if(degree[u] > degree[v])
+		swap(u,v);
 
-	int du = degree[u]+1, dv = degree[v]+1;
-	ui i = pstart[u], j = pstart[v];
+	Degree du = degree[u]+1, dv = degree[v]+1;
+	Id i = pstart[u], j = pstart[v];
 	while(i < pstart[u+1]&&j < pstart[v+1]&&cn < c&&du >= c&&dv >= c) {
 		if(edges[i] < edges[j]) {
 			-- du;
@@ -401,17 +408,17 @@ int Graph::check_common_neighbor(int u, int v, int c) {
 	return -2;
 }
 
-int Graph::similar_check_OP(int u, ui idx, int eps_a2, int eps_b2) {
-	int v = edges[idx];
+int Graph::similar_check_OP(Id u, Id idx, int eps_a2, int eps_b2) {
+	Id v = edges[idx];
 
 #ifdef _DEBUG_
 	if(min_cn[idx] == -1||min_cn[idx] == -2) printf("??? WA in similar_check\n");
 #endif
 
 	if(min_cn[idx] == 0) {
-		int du = degree[u], dv = degree[v];
+		Degree du = degree[u], dv = degree[v];
 		int c = compute_common_neighbor_lowerbound(du,dv,eps_a2,eps_b2);
-	
+
 #ifdef _DEBUG_
 		if(du < c||dv < c) return -2;
 #endif
@@ -424,31 +431,33 @@ int Graph::similar_check_OP(int u, ui idx, int eps_a2, int eps_b2) {
 	return check_common_neighbor(u, v, min_cn[idx]);
 }
 
-int Graph::compute_common_neighbor_lowerbound(int du,int dv,int eps_a2,int eps_b2) {
+int Graph::compute_common_neighbor_lowerbound(Id du,Id dv,int eps_a2,int eps_b2) {
 	int c = (int)(sqrtl((((long double)du)*((long double)dv)*eps_a2)/eps_b2));
 
 #ifdef _DEBUG_
-	if(((long long)du)*dv*eps_a2 < 0||((long long)c)*c*eps_b2 < 0) printf("??? Overflow in similar_check\n");
+	if(((long long)du)*dv*eps_a2 < 0||((long long)c)*c*eps_b2 < 0)
+		printf("??? Overflow in similar_check\n");
 #endif
 
 	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2) ++ c;
 
 #ifdef _DEBUG_
-	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2) printf("??? Wrong common neigbor computation in similar_check\n");
+	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2)
+		printf("??? Wrong common neigbor computation in similar_check\n");
 #endif
 	return c;
 }
 
 void Graph::prune_and_cross_link(int eps_a2, int eps_b2, int miu, int *cores, int &cores_e) {
-	for(ui i = 0;i < n;i ++) { //must be iterating from 0 to n-1
-		for(ui j = pstart[i];j < pstart[i+1];j ++) {
+	for(Id i = 0;i < n;i ++) { //must be iterating from 0 to n-1
+		for(Id j = pstart[i];j < pstart[i+1];j ++) {
 			if(edges[j] < i) {
 				if(min_cn[j] == 0) min_cn[j] = -2;
 				continue; //this edge has already been checked
 			}
 
-			int v = edges[j];
-			int a = degree[i], b = degree[v];
+			Id v = edges[j];
+			Degree a = degree[i], b = degree[v];
 			if(a > b) swap(a, b);
 
 			if(((long long)a)*eps_b2 < ((long long)b)*eps_a2) {
@@ -478,7 +487,7 @@ void Graph::prune_and_cross_link(int eps_a2, int eps_b2, int miu, int *cores, in
 
 			if(min_cn[j] != -2) {
 			//else {
-				ui r_id = binary_search(edges, pstart[v], pstart[v+1], i);
+				Id r_id = binary_search(edges, pstart[v], pstart[v+1], i);
 				reverse[j] = r_id;
 				reverse[r_id] = j;
 
@@ -488,12 +497,13 @@ void Graph::prune_and_cross_link(int eps_a2, int eps_b2, int miu, int *cores, in
 	}
 }
 
-int Graph::find_root(int u) {
-	int x = u;
-	while(pa[x] != x) x = pa[x];
+Id Graph::find_root(Id u) {
+	Id x = u;
+	while(pa[x] != x)
+		x = pa[x];
 
 	while(pa[u] != x) {
-		int tmp = pa[u];
+		Id tmp = pa[u];
 		pa[u] = x;
 		u = tmp;
 	}
@@ -501,14 +511,16 @@ int Graph::find_root(int u) {
 	return x;
 }
 
-void Graph::my_union(int u, int v) {
-	int ru = find_root(u);
-	int rv = find_root(v);
+void Graph::my_union(Id u, Id v) {
+	Id ru = find_root(u);
+	Id rv = find_root(v);
 
 	if(ru == rv) return ;
 
-	if(rank[ru] < rank[rv]) pa[ru] = rv;
-	else if(rank[ru] > rank[rv]) pa[rv] = ru;
+	if(rank[ru] < rank[rv])
+		pa[ru] = rv;
+	else if(rank[ru] > rank[rv])
+		pa[rv] = ru;
 	else {
 		pa[rv] = ru;
 		++ rank[ru];

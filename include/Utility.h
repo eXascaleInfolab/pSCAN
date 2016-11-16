@@ -19,17 +19,13 @@
 #include <set>
 // #include <unordered_set>
 
-typedef unsigned int ui;
-#define pb push_back
-#define mp make_pair
+typedef unsigned  Id;
+typedef int  Degree;  // ATTENTION: degrees are specified as int in the input file
 
-#define _LINUX_
-//#define _DEBUG_
-
-#ifdef _LINUX_
-	#include <sys/time.h>
+#ifdef __unix__
+#include <sys/time.h>
 #endif
 
-FILE *open_file(const char *file_name, const char *mode) ;
+FILE *open_file(const char *file_name, const char *mode);
 
 #endif
