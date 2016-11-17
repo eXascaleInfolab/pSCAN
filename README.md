@@ -4,7 +4,7 @@ The paper: *["pSCAN: Fast and Exact Structural Graph Clustering"](https://www.cs
 
 Author: Dr. [Lijun Chang](https://www.cse.unsw.edu.au/~ljchang/) <ljchang@cse.unsw.edu.au>
 
-This is the refactored version of the pScan (the unsafe code and most of the formatting were not modified) with the purpose to extend I/O to be natively applicable for the [PyCaBeM](https://github.com/eXascaleInfolab/PyCABeM) clustering benchmark.  
+This is the refactored version of the pScan, the unsafe code and most of the formatting were not modified. The I/O will be extended to be natively applicable for the [PyCaBeM](https://github.com/eXascaleInfolab/PyCABeM) clustering benchmark.  
 Modified by Artem Lutov <artem@exascale.info>
 
 # Usage

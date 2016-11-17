@@ -1,0 +1,58 @@
+# Configuration file for the automatic generation of the ONMI input options parsing
+
+package "pSCAN"
+version "0.2"
+
+purpose "Clusters input network considering overlaps and building Exact Structural Graph"
+
+#usage "onmi [OPTIONS] clsfile1 clsfile2"
+description "input_network (graph) is specified as either a file in .CNL format, or a directory containing \"b_degree.bin\" and \"b_adj.bin\""
+
+# Input
+#option  "input" i  "input network: either a file in .CNL format, or a directory containing \"b_degree.bin\" and \"b_adj.bin\""  string required
+option  "dir" d  "input network (graph) is specified by the \"b_degree.bin\" and \"b_adj.bin\" files located in the specified directory"  flag off
+# Processing params
+option  "epsilon" e  "epsilon"  float default="0.2"
+option  "mu" m  "epsilon"  int default="3"
+# Output
+option  "legacy" l  "output clustering in the legacy pSCAN format instead of the standard CNL"  flag off
+option  "output" o  "output file if the resulting clustering should be saved"  string
+
+args "--unamed-opts=input_network"   # Allow input files to be unnamed parameters
+
+
+# Basic structure, see https://www.gnu.org/software/gengetopt/gengetopt.html#Basic-Usage
+#     package "<packname>"
+#     version "<version>"
+#     purpose "<purpose>"
+#     usage "<usage>"
+#     description "<description>"
+#     versiontext "<versiontext>"
+#
+#     args "<command line options>"
+#
+#     option <long> <short> "<desc>"
+#         {details="<detailed description>"}
+#         {argtype} {typestr="<type descr>"}
+#         {values="<value1>","<value2>",...}
+#         {default="<default value>"}
+#         {dependon="<other option>"}
+#         {required} {argoptional} {multiple}
+#         {hidden}
+#
+#     option <long> <short> "<desc>" flag <on/off>
+#
+#     section "section name" {sectiondesc="optional section description"}
+#
+#     text "a textual sentence"
+#
+#
+# Mutually exclusive options should belong to a group:
+#
+#     defgroup "<group name>" {groupdesc="<group description>"} {required}
+#     groupoption <long> <short> "<desc>" <argtype> group="<group name>" \
+#          {argoptional} {multiple}
+#
+#     defgroup "my grp2"
+#     defgroup "grp1" groupdesc="an option of this group is required" required
+#     groupoption "opta" a "string a" group="grp1" multiple

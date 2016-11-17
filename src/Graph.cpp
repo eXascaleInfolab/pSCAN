@@ -1,12 +1,53 @@
-#include "Utility.h"
+#include <cstdlib>
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <algorithm>
+#include <sstream>
+//#include <iostream>
+#include <queue>
+#include <set>
+// #include <unordered_set>
+#include <stdexcept>
+#include <system_error>
+#include <cerrno>
+#include <ctime>
+
+#ifdef __unix__
+#include <sys/time.h>  // gettimeofday
+#endif
+
 #include "Graph.h"
 
-Graph::Graph(const char *_dir)
-: dir(_dir ? _dir : ""), n(0), m(0), eps_a2(0), eps_b2(0), miu(0)
+using std::invalid_argument;
+using std::domain_error;
+using std::system_error;
+using std::swap;
+using std::to_string;
+using namespace pscan;
+
+
+Graph::Graph(float aeps, int amiu, const char *ainput, bool adir)
+: dir(adir), input(ainput), n(0), m(0), eps(aeps), eps_a2(0), eps_b2(0), miu(amiu)
 , pstart(nullptr), edges(nullptr), reverse(nullptr), min_cn(nullptr)
 , pa(nullptr), rank(nullptr), cid(nullptr)
 , degree(nullptr), similar_degree(nullptr), effective_degree(nullptr)
-,noncore_cluster()  {}
+,noncore_cluster()
+{
+	if(aeps < 0 || aeps > 1)
+		throw invalid_argument("aeps should E [0, 1]");
+
+	if(aeps == 0 || aeps == 1) {  // Note: strict == is fine here
+		eps_b2 = 1;
+		eps_a2 = aeps;
+		return;
+	}
+
+	eps_b2 = 1e4;
+	eps_a2 = round(aeps * eps_b2);  // Note: uint_32 is limited with 2^32, floor( log10(2^16) ) < 5  ==> 1e4 is max possible accuracy
+	eps_a2 *= eps_a2;
+	eps_b2 *= eps_b2;
+}
 
 Graph::~Graph() {
 	if(pstart) {
@@ -51,8 +92,19 @@ Graph::~Graph() {
 	}
 }
 
-void Graph::read_graph(const char *filename) {
-	FILE *f = open_file((dir + string("/b_degree.bin")).c_str(), "rb");
+void Graph::load() {
+	if(dir)
+		loadBinary();
+	else loadNSL();
+}
+
+void Graph::loadBinary() {
+	string  fname = input + "/b_degree.bin";
+	FILE *f = fopen(fname.c_str(), "rb");
+	if(!f) {
+		perror(fname.insert(0, "Error, on opening ").c_str());
+		throw system_error(errno, std::system_category());
+	}
 
 	int tt;
 	fread(&tt, sizeof(int), 1, f);
@@ -76,7 +128,12 @@ void Graph::read_graph(const char *filename) {
 
 	fclose(f);
 
-	f = open_file((dir + string("/b_adj.bin")).c_str(), "rb");
+	fname = input + "/b_adj.bin";
+	f = fopen(fname.c_str(), "rb");
+	if(!f) {
+		perror(fname.insert(0, "Error, on opening ").c_str());
+		throw system_error(errno, std::system_category());
+	}
 
 	if(!pstart)
 		pstart = new Id[n+1];
@@ -110,16 +167,15 @@ void Graph::read_graph(const char *filename) {
 
 	for(Id i = 0;i < n;i ++) {
 		for(Id j = pstart[i];j < pstart[i+1];j ++) {
-			if(edges[j] == i) {
-				printf("Self loop\n");
-				//exit(1);
-			}
-			if(j > pstart[i]&&edges[j] <= edges[j-1]) {
-				printf("Edges not sorted in increasing id order!\nThe program may not run properly!\n");
-				//exit(1);
-			}
+			if(edges[j] == i)
+				throw domain_error("Self loops are not allowed\n");
+			if(j > pstart[i]&&edges[j] <= edges[j-1])
+				throw domain_error("Edges not sorted in increasing id order!\nThe program may not run properly!\n");
 		}
 	}
+}
+
+void Graph::loadNSL() {
 }
 
 Id Graph::binary_search(const Id *edges, Id b, Id e, Id val) {
@@ -142,7 +198,7 @@ Id Graph::binary_search(const Id *edges, Id b, Id e, Id val) {
 	return e;
 }
 
-void Graph::cluster_noncore_vertices(int eps_a2, int eps_b2, int mu) {
+void Graph::cluster_noncore_vertices(int mu) {
 	if(!cid)
 		cid = new Id[n];
 	for(Id i = 0; i < n; i++)
@@ -160,7 +216,7 @@ void Graph::cluster_noncore_vertices(int eps_a2, int eps_b2, int mu) {
 	for(Id i = 0;i < n;i ++) if(similar_degree[i] >= mu) {
 		for(Id j = pstart[i];j < pstart[i+1];j ++) if(similar_degree[edges[j]] < mu) {
 			if(min_cn[j] >= 0) {
-				min_cn[j] = similar_check_OP(i, j, eps_a2, eps_b2);
+				min_cn[j] = similar_check_OP(i, j);
 				if(reverse[reverse[j]] != j) printf("WA cluster_noncore\n");
 				min_cn[reverse[j]] = min_cn[j];
 				if(min_cn[j] == -1) {
@@ -170,21 +226,31 @@ void Graph::cluster_noncore_vertices(int eps_a2, int eps_b2, int mu) {
 			}
 
 			if(min_cn[j] == -1)
-				noncore_cluster.push_back(make_pair(cid[pa[i]], edges[j]));
+				noncore_cluster.emplace_back(cid[pa[i]], edges[j]);
 		}
 	}
 }
 
-void Graph::output(const char *eps_s, const char *miu) {
+void Graph::output(const char *outfile, bool lgcfmt) {
+	if(lgcfmt)
+		saveLegacy(outfile);
+	else saveCNL(outfile);
+}
+
+void Graph::saveLegacy(const char *outfile) {
 	printf("\t*** Start write result into disk!\n");
 
-	string out_name = dir + "/result-" + string(eps_s) + "-" + string(miu) + ".txt";
-	FILE *fout = open_file(out_name.c_str(), "w");
+	string out_name = outfile ? string(outfile)
+		: input + "/result-" + to_string(eps) + "-" + to_string(miu) + ".txt";
+	FILE *fout = fopen(out_name.c_str(), "w");
+	if(!fout) {
+		perror(out_name.insert(0, "Error, on opening ").c_str());
+		throw system_error(errno, std::system_category());
+	}
 
 	fprintf(fout, "c/n vertex_id cluster_id\n");
 
-	int mu = atoi(miu);
-	for(Id i = 0;i < n;i ++) if(similar_degree[i] >= mu) {
+	for(Id i = 0;i < n;i ++) if(similar_degree[i] >= miu) {
 		fprintf(fout, "c %d %d\n", i, cid[pa[i]]);
 	}
 
@@ -197,10 +263,10 @@ void Graph::output(const char *eps_s, const char *miu) {
 	fclose(fout);
 }
 
-void Graph::pSCAN(const char *eps_s, int _miu) {
-	get_eps(eps_s);
-	miu = _miu;
+void Graph::saveCNL(const char *outfile) {
+}
 
+void Graph::pSCAN() {
 	if(!similar_degree)
 		similar_degree = new Degree[n];
 	memset(similar_degree, 0, sizeof(Degree)*n);
@@ -230,7 +296,7 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 	int *cores = new int[n];
 	int cores_n = 0;
 
-	prune_and_cross_link(eps_a2, eps_b2, miu, cores, cores_n);
+	prune_and_cross_link(miu, cores, cores_n);
 	//printf("\t*** Finished prune and cross link!\n");
 
 #ifdef __unix__
@@ -302,7 +368,7 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 #endif
 				Id v = edges[idx];
 
-				min_cn[idx] = min_cn[reverse[idx]] = similar_check_OP(u, idx, eps_a2, eps_b2);
+				min_cn[idx] = min_cn[reverse[idx]] = similar_check_OP(u, idx);
 
 				if(min_cn[idx] == -1) ++ similar_degree[u];
 				else -- effective_degree[u];
@@ -338,7 +404,7 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 				continue;
 			}
 
-			min_cn[idx] = min_cn[reverse[idx]] = similar_check_OP(u, idx, eps_a2, eps_b2);
+			min_cn[idx] = min_cn[reverse[idx]] = similar_check_OP(u, idx);
 
 			if(effective_degree[v] >= 0) {
 				if(min_cn[idx] == -1) {
@@ -377,7 +443,7 @@ void Graph::pSCAN(const char *eps_s, int _miu) {
 	printf("Prune time: %d\nSort time: %d\nRefine time: %d\n", end1-start,end2-2end1,end-end2);
 #endif
 
-	cluster_noncore_vertices(eps_a2, eps_b2, miu);
+	cluster_noncore_vertices(miu);
 }
 
 int Graph::check_common_neighbor(Id u, Id v, int c) {
@@ -408,16 +474,17 @@ int Graph::check_common_neighbor(Id u, Id v, int c) {
 	return -2;
 }
 
-int Graph::similar_check_OP(Id u, Id idx, int eps_a2, int eps_b2) {
+int Graph::similar_check_OP(Id u, Id idx) {
 	Id v = edges[idx];
 
 #ifdef _DEBUG_
-	if(min_cn[idx] == -1||min_cn[idx] == -2) printf("??? WA in similar_check\n");
+	if(min_cn[idx] == -1||min_cn[idx] == -2)
+		printf("??? WA in similar_check\n");
 #endif
 
 	if(min_cn[idx] == 0) {
 		Degree du = degree[u], dv = degree[v];
-		int c = compute_common_neighbor_lowerbound(du,dv,eps_a2,eps_b2);
+		int c = compute_common_neighbor_lowerbound(du,dv);
 
 #ifdef _DEBUG_
 		if(du < c||dv < c) return -2;
@@ -431,15 +498,16 @@ int Graph::similar_check_OP(Id u, Id idx, int eps_a2, int eps_b2) {
 	return check_common_neighbor(u, v, min_cn[idx]);
 }
 
-int Graph::compute_common_neighbor_lowerbound(Id du,Id dv,int eps_a2,int eps_b2) {
-	int c = (int)(sqrtl((((long double)du)*((long double)dv)*eps_a2)/eps_b2));
+int Graph::compute_common_neighbor_lowerbound(Id du,Id dv) {
+	int c = (int)(sqrtl((((long double)du) * ((long double)dv)*eps_a2)/eps_b2));
 
 #ifdef _DEBUG_
-	if(((long long)du)*dv*eps_a2 < 0||((long long)c)*c*eps_b2 < 0)
+	if(((long long)du)*dv*eps_a2 < 0 || ((long long)c)*c*eps_b2 < 0)
 		printf("??? Overflow in similar_check\n");
 #endif
 
-	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2) ++ c;
+	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2)
+		++ c;
 
 #ifdef _DEBUG_
 	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2)
@@ -448,7 +516,7 @@ int Graph::compute_common_neighbor_lowerbound(Id du,Id dv,int eps_a2,int eps_b2)
 	return c;
 }
 
-void Graph::prune_and_cross_link(int eps_a2, int eps_b2, int miu, int *cores, int &cores_e) {
+void Graph::prune_and_cross_link(int miu, int *cores, int &cores_e) {
 	for(Id i = 0;i < n;i ++) { //must be iterating from 0 to n-1
 		for(Id j = pstart[i];j < pstart[i+1];j ++) {
 			if(edges[j] < i) {
@@ -467,7 +535,7 @@ void Graph::prune_and_cross_link(int eps_a2, int eps_b2, int miu, int *cores, in
 				-- effective_degree[v];
 			}
 			else {
-				int c = compute_common_neighbor_lowerbound(a, b, eps_a2, eps_b2);
+				int c = compute_common_neighbor_lowerbound(a, b);
 
 #ifdef _DEBUG_
 				if(a < c||b < c) printf("!!! HHH\n");
@@ -525,29 +593,4 @@ void Graph::my_union(Id u, Id v) {
 		pa[rv] = ru;
 		++ rank[ru];
 	}
-}
-
-void Graph::get_eps(const char *eps_s) {
-	int i = 0, eps_a = 0, eps_b = 1;
-	while(eps_s[i] != '\0'&&eps_s[i] != '.') {
-		eps_a = eps_a*10 + (eps_s[i]-'0');
-		++ i;
-	}
-
-	if(eps_s[i] == '.') {
-		++ i;
-		while(eps_s[i] != '\0') {
-			eps_a = eps_a*10 + (eps_s[i]-'0');
-			eps_b *= 10;
-			++ i;
-		}
-	}
-
-	if(eps_a > eps_b||eps_b > 100||eps_a <= 0) {
-		printf("??? Wrong eps format: %d/%d, %s\n", eps_a, eps_b, eps_s);
-		exit(1);
-	}
-
-	eps_a2 = eps_a * eps_a;
-	eps_b2 = eps_b * eps_b;
 }

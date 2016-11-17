@@ -1,15 +1,29 @@
 #ifndef _GRAPH_H_
 #define _GRAPH_H_
 
-#include "Utility.h"
+#ifdef _MSC_VER
+	#define _CRT_SECURE_NO_WARNINGS
+#endif
 
-using namespace std;
+#include <string>
+#include <vector>
+
+
+namespace pscan {
+
+typedef unsigned  Id;
+typedef int  Degree;  // ATTENTION: degrees are specified as int in the input file
+
+using std::string;
+using std::vector;
+using std::pair;
 
 class Graph {
-private:
-	string dir; //input graph directory
+	bool dir; //input network is specified using dir with binary files VS .CNL file
+	string input; //input network (graph)
 	Id n, m; //number of nodes and edges of the graph
 
+	const float eps;
 	int eps_a2, eps_b2, miu; // eps_a2/eps_b2 = eps^2
 
 	Id *pstart; //offset of neighbors of nodes
@@ -29,7 +43,7 @@ private:
 	vector<pair<int,int> > noncore_cluster;
 
 public:
-	Graph(const char *_dir=nullptr);
+	Graph(float aeps, int amiu, const char *ainput, bool adir=false);
 	~Graph();
 
 	Graph(const Graph&)=delete;
@@ -38,26 +52,31 @@ public:
 	Graph& operator=(const Graph&)=delete;
 	Graph& operator=(Graph&&)=delete;
 
-	void read_graph(const char *filename=nullptr);
-	void pSCAN(const char *eps_s, int miu);
+	void load();
+	void pSCAN();
 		//eps_s and miu are the parameters (epsilon, miu) for the SCAN algorithm
-	void cluster_noncore_vertices(int eps_a2, int eps_b2, int mu);
-	void output(const char *eps_s, const char *miu);
+	void cluster_noncore_vertices(int mu);
+	void output(const char *outfile, bool lgcfmt=false);
+protected:
+	void loadBinary();
+	void loadNSL();  // Load  network (graph) in NSE/A format
 
+	void saveLegacy(const char *outfile);
+	void saveCNL(const char *outfile);
 private:
 	Id binary_search(const Id *edges, Id b, Id e, Id val);
 		//return the first pos, s.t. array[pos] >= val (may return e)
-	int naive_similar_check(Id u, Id v, int eps_a2, int eps_b2);
-	int similar_check(Id u, Id v, int eps_a2, int eps_b2);
-	int similar_check_OP(Id u, Id idx, int eps_a, int eps_b);
+	int naive_similar_check(Id u, Id v);
+	int similar_check(Id u, Id v);
+	int similar_check_OP(Id u, Id idx);
 	int check_common_neighbor(Id u, Id v, int c);
-	int compute_common_neighbor_lowerbound(Id u,Id v,int eps_a2,int eps_b2);
-	void prune_and_cross_link(int eps_a2, int eps_b2, int miu, int *cores, int &cores_e);
+	int compute_common_neighbor_lowerbound(Id u,Id v);
+	void prune_and_cross_link(int miu, int *cores, int &cores_e);
 
 	Id find_root(Id u);
 	void my_union(Id u, Id v);
-
-	void get_eps(const char *eps_s);
 };
+
+}  // pscan
 
 #endif

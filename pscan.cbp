@@ -50,12 +50,15 @@
 			<Add option="-std=c++14" />
 			<Add option="-fexceptions" />
 			<Add directory="include" />
+			<Add directory="autogen" />
 		</Compiler>
+		<Unit filename="autogen/cmdline.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="autogen/cmdline.h" />
 		<Unit filename="include/Graph.h" />
-		<Unit filename="include/Utility.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="src/Graph.cpp" />
-		<Unit filename="src/Utility.cpp" />
 		<Extensions>
 			<DoxyBlocks>
 				<comment_style block="1" line="1" />

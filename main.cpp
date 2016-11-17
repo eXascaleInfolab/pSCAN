@@ -1,61 +1,39 @@
-#include "Utility.h"
+#include <cstdio>
+#include "cmdline.h"
 #include "Graph.h"
 
-void usage() {
-	printf("Usage: [1]exe [2]graph-dir [3]similarity-threshold [4]density-threshold [5 optional]output\n");
-}
+using namespace pscan;
 
 int main(int argc, char *argv[]) {
-	if(argc < 4) {
-		usage();
-		return 0;
+	// Parse input arguments
+	gengetopt_args_info args_info;
+	if(!cmdline_parser(argc, argv, &args_info))
+         return 1;
+
+	if(args_info.inputs_num != 1) {
+		fputs("Error: Input network is expected as a path (file / directory)\n\n", stderr);
+		cmdline_parser_print_help();
+		return 1;
 	}
+	printf("Starting pSCAN (eps: %f, mu: %d)\n\tinput %s: %s\n\toutput (%s): %s)\n"
+		, args_info.epsilon_arg, args_info.mu_arg
+		, args_info.dir_flag ? "dir" : "file", args_info.inputs[0]
+		, args_info.legacy_flag ? "legacy" : "CNL", args_info.output_given ? args_info.output_arg : "-");
 
-	printf("****  Clustering (%s): %s, %s, %s *** \n",
-#ifdef _DEBUG_
-		"Debug"
-#else
-		"Release"
-#endif
-		, argv[1], argv[2], argv[3]);
+	// Load input graph
+	Graph *graph = new Graph(args_info.epsilon_arg, args_info.mu_arg, args_info.inputs[0], args_info.dir_flag);
+	graph->load();
+	puts("The input graph is loaded\n");
 
-#ifdef __unix__
-	struct timeval start, end1, end;
-	gettimeofday(&start, nullptr);
-#else
-	int start, end1;
-	start = clock();
-#endif
+	// Perform the clustering
+	graph->pSCAN();
+	// Note: timing can be measured calling
+	// $ time ./pscan ...
 
-	Graph *graph = new Graph(argv[1]);
-	graph->read_graph();
-	printf("\t*** Finished loading graph!\n");
-
-#ifdef __unix__
-	gettimeofday(&end1, nullptr);
-#else
-	end1 = clock();
-#endif
-	long long mtime1, seconds1, useconds1;
-	seconds1 = end1.tv_sec - start.tv_sec;
-	useconds1 = end1.tv_usec - start.tv_usec;
-	mtime1 = seconds1*1000000 + useconds1;
-
-	graph->pSCAN(argv[2], atoi(argv[3]));
-
-#ifdef __unix__
-	gettimeofday(&end, nullptr);
-
-	long long mtime, seconds, useconds;
-	seconds = end.tv_sec - start.tv_sec;
-	useconds = end.tv_usec - start.tv_usec;
-	mtime = seconds*1000000 + useconds;
-
-	printf("Total time without IO: %lld\n", mtime-mtime1);
-#endif
-
-	if(argc >= 5 && strcmp(argv[4], "output") == 0)
-		graph->output(argv[2], argv[3]);
+	if(args_info.output_given) {
+		printf("Saving the resulting clustering into: %s\n", args_info.output_arg);
+		graph->output(args_info.output_arg, args_info.legacy_flag);
+	}
 
 	return 0;
 }
