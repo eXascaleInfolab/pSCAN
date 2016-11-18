@@ -7,6 +7,26 @@ Author: Dr. [Lijun Chang](https://www.cse.unsw.edu.au/~ljchang/) <ljchang@cse.un
 This is the refactored version of the pScan, the unsafe code and original data structures were NOT modified. The I/O formats are extended to be natively applicable for the [PyCaBeM](https://github.com/eXascaleInfolab/PyCABeM) clustering benchmark.  
 Extended by Artem Lutov <artem@exascale.info>
 
+## Content
+- [Deployment](#deployment)
+	- [Dependencies](#dependencies)
+	- [Compilation](#compilation)
+- [Usage](#usage)
+  - [Input](#input)
+  - [Output](#output)
+- [Related Projects](#related-projects)
+
+# Deployment
+
+## Dependencies
+There no any dependencies for the execution or compilation.  
+However, to extend the input options and automatically regenerate the input parsing,
+[*gengetopt*](https://www.gnu.org/software/gengetopt) application should be installed: `$ sudo apt-get install gengetopt`.
+
+## Compilation
+Just execute `$ make [release | debug]`.  
+To update/extend the input parameters just modify `args.ggo` and run `GenerateArgparser.sh` (calls `gengetopt`).
+
 # Usage
 ```
 $ ./pscan -h
@@ -31,7 +51,7 @@ is NSA or NSE is identified by the file extension or header.
                          large clusters  (default=`0.35')
   -m, --mu=INT         size threshold  (default=`3')
   -l, --legacy         output clustering in the legacy pSCAN format instead of
-                         the standard NSL  (default=off)
+                         the standard CNL (default=off)
   -o, --output=STRING  output file if the resulting clustering should be saved
 ```
 For example
@@ -40,6 +60,8 @@ For example
 
 ./pscan -e 0.2 -m 3 -l -o test/clusters.txt -f=BIN test
 ```
+
+## Input
 The input network to be clustered is specified either in NSL (nsa/nse) format by 2 BINARY files:
 
 1. NSL format (nsa - arcs, directed network; nse - edges, undirected network) specifies network links is each line of the file as node ids separated by the space delimiter:
@@ -72,3 +94,16 @@ The input network to be clustered is specified either in NSL (nsa/nse) format by
 	0 2 3   // neighbours of vertex 1
 	...
 	```
+## Output
+The CNL (clusters nodes list) output is a standard format, generalization of the Stanford SNAP ground-truth communities. It is an input format for various NMI-evaluation algorithms. Each line of the file corresponds to the single resulting cluster, where member nodes are specified separated by the space/tab with optional share. For example:
+```
+# Clusters: 2, Nodes: 5, Fuzzy: 0
+0
+1 3 2 4
+```
+
+# Related Projects
+- [GenConvNMI](https://github.com/eXascaleInfolab/GenConvNMI) - Overlapping NMI evaluation that is compatible with the original NMI (unlike the `onmi`).
+- [OvpNMI](https://github.com/eXascaleInfolab/OvpNMI) - Another method of the NMI evaluation for the overlapping clusters (communities) that is not compatible with the standard NMI value unlike GenConvNMI, but it is much faster and yields exact results unlike probabilistic results with some variance in GenConvNMI.
+- [ExecTime](https://bitbucket.org/lumais/exectime/)  - A lightweight resource consumption (RSS RAM, CPU, etc.) profiler.
+- [PyCABeM](https://github.com/eXascaleInfolab/PyCABeM) - Python Benchmarking Framework for the Clustering Algorithms Evaluation. Uses extrinsic (NMIs) and intrinsic (Q) measures for the clusters quality evaluation considering overlaps (nodes membership by multiple clusters).
