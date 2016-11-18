@@ -1,5 +1,4 @@
 #include <cstdio>
-#include "cmdline.h"
 #include "Graph.h"
 
 using namespace pscan;
@@ -15,13 +14,14 @@ int main(int argc, char *argv[]) {
 		cmdline_parser_print_help();
 		return 1;
 	}
-	printf("Starting pSCAN (eps: %f, mu: %d)\n\tinput %s: %s\n\toutput (%s): %s)\n"
+	printf("Starting pSCAN (eps: %f, mu: %d)\n\tinput (%s): %s\n\toutput (%s): %s)\n"
 		, args_info.epsilon_arg, args_info.mu_arg
-		, args_info.dir_flag ? "dir" : "file", args_info.inputs[0]
+		, to_string(args_info.format_arg).c_str(), args_info.inputs[0]
 		, args_info.legacy_flag ? "legacy" : "CNL", args_info.output_given ? args_info.output_arg : "-");
 
 	// Load input graph
-	Graph *graph = new Graph(args_info.epsilon_arg, args_info.mu_arg, args_info.inputs[0], args_info.dir_flag);
+	Graph *graph = new Graph(args_info.epsilon_arg, args_info.mu_arg
+		, args_info.inputs[0], args_info.format_arg);
 	graph->load();
 	puts("The input graph is loaded\n");
 

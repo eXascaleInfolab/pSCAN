@@ -1,17 +1,20 @@
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>  // strtok
 #include <cmath>
 #include <cstring>
 #include <algorithm>
 #include <sstream>
+#include <cctype>  // tolower
 //#include <iostream>
-#include <queue>
 #include <set>
 // #include <unordered_set>
 #include <stdexcept>
-#include <system_error>
+//#include <system_error>
+#include <fstream>
 #include <cerrno>
 #include <ctime>
+#include <cassert>
 
 #ifdef __unix__
 #include <sys/time.h>  // gettimeofday
@@ -19,20 +22,54 @@
 
 #include "Graph.h"
 
+using std::set;
 using std::invalid_argument;
 using std::domain_error;
-using std::system_error;
+//using std::system_error;
+using std::ios_base;
+using std::ifstream;
 using std::swap;
 using std::to_string;
 using namespace pscan;
 
 
-Graph::Graph(float aeps, int amiu, const char *ainput, bool adir)
-: dir(adir), input(ainput), n(0), m(0), eps(aeps), eps_a2(0), eps_b2(0), miu(amiu)
+// Accessory Functions ---------------------------------------------------------
+string to_string(enum_format fmt)
+{
+	string res;
+	switch(fmt) {
+	case format_arg_BIN:
+		res = "BINARY";
+		break;
+	case format_arg_NSA:
+		res = "NSA";
+		break;
+	case format_arg_NSE:
+		res = "NSE";
+		break;
+	case format__NULL:
+	default:
+		res = "UNDEFINED";
+	}
+
+	return res;
+}
+
+void tolower(char* text)
+{
+	if(!text)
+		return;
+	while(*text)
+		*text++ = tolower(*text);
+}
+
+// Graph Methods ---------------------------------------------------------------
+Graph::Graph(float aeps, int amiu, const char *ainput, enum_format ainpfmt)
+: inpfmt(ainpfmt), input(ainput), n(0), m(0), eps(aeps), eps_a2(0), eps_b2(0), miu(amiu)
 , pstart(nullptr), edges(nullptr), reverse(nullptr), min_cn(nullptr)
 , pa(nullptr), rank(nullptr), cid(nullptr)
 , degree(nullptr), similar_degree(nullptr), effective_degree(nullptr)
-,noncore_cluster()
+,noncore_cluster(), ieids()
 {
 	if(aeps < 0 || aeps > 1)
 		throw invalid_argument("aeps should E [0, 1]");
@@ -93,9 +130,19 @@ Graph::~Graph() {
 }
 
 void Graph::load() {
-	if(dir)
+	if(inpfmt == format_arg_BIN)
 		loadBinary();
 	else loadNSL();
+
+	// Verify loaded edges
+	for(Id i = 0;i < n;i ++) {
+		for(Id j = pstart[i];j < pstart[i+1];j ++) {
+			if(edges[j] == i)
+				throw domain_error("Self loops are not allowed\n");
+			if(j > pstart[i] && edges[j] <= edges[j-1])
+				throw domain_error("Edges not sorted in increasing id order!\nThe program may not run properly!\n");
+		}
+	}
 }
 
 void Graph::loadBinary() {
@@ -103,7 +150,7 @@ void Graph::loadBinary() {
 	FILE *f = fopen(fname.c_str(), "rb");
 	if(!f) {
 		perror(fname.insert(0, "Error, on opening ").c_str());
-		throw system_error(errno, std::system_category());
+		throw ios_base::failure(strerror(errno));
 	}
 
 	int tt;
@@ -117,13 +164,14 @@ void Graph::loadBinary() {
 
 	// printf("\tn = %u; m = %u\n", n, m/2);
 
-	degree = new Degree[n];
+	if(!degree)
+		degree = new Degree[n];
 	fread(degree, sizeof(unsigned), n, f);  // ATTENTION: degrees are specified as "unsigned int" in the input file
 
 #ifdef _DEBUG_
 	long long sum = 0;
 	for(Id i = 0;i < n;i ++) sum += degree[i];
-	if(sum != m) printf("WA input graph\n");
+	assert(sum == m && "WA input graph");
 #endif
 
 	fclose(f);
@@ -132,7 +180,7 @@ void Graph::loadBinary() {
 	f = fopen(fname.c_str(), "rb");
 	if(!f) {
 		perror(fname.insert(0, "Error, on opening ").c_str());
-		throw system_error(errno, std::system_category());
+		throw ios_base::failure(strerror(errno));
 	}
 
 	if(!pstart)
@@ -141,6 +189,7 @@ void Graph::loadBinary() {
 		edges = new Id[m];
 	if(!reverse)
 		reverse = new Id[m];
+	memset(reverse, 0, sizeof(Id)*m);
 	if(!min_cn)
 		min_cn = new int[m];
 	memset(min_cn, 0, sizeof(int)*m);
@@ -164,25 +213,180 @@ void Graph::loadBinary() {
 	delete[] buf;
 
 	fclose(f);
-
-	for(Id i = 0;i < n;i ++) {
-		for(Id j = pstart[i];j < pstart[i+1];j ++) {
-			if(edges[j] == i)
-				throw domain_error("Self loops are not allowed\n");
-			if(j > pstart[i]&&edges[j] <= edges[j-1])
-				throw domain_error("Edges not sorted in increasing id order!\nThe program may not run properly!\n");
-		}
-	}
 }
 
 void Graph::loadNSL() {
+	assert(inpfmt != format_arg_BIN && "Inappropriate file format");
+
+	if(inpfmt == format__NULL) {
+		// Use extension to identify the file format
+		size_t iext = input.rfind('.');
+		if(iext != string::npos) {
+			if(!strcmp(&input.c_str()[iext+1], "nse"))
+				inpfmt = format_arg_NSE;
+			else if(!strcmp(&input.c_str()[iext+1], "nsa"))
+				inpfmt = format_arg_NSA;
+		}
+	}
+
+	ifstream  finp;
+	finp.exceptions(ifstream::badbit);  //  | ifstream::failbit  - raises exception on EOF
+	finp.open(input);
+	if(!finp.is_open()) {
+		perror(("Error opening the file " + input).c_str());
+		throw std::ios_base::failure(strerror(errno));
+	}
+
+	// Intermediate data structures to fill internal data structures
+	unordered_map<Id, Id>  eiids;  // Map from external to internal ids
+	vector<set<Id>>  nodes;  // Nodes with arcs specified with internal ids
+
+	// Parse NSE/A file
+	string line;
+
+	// Parse the header
+	// [Nodes: <nodes_num>[,]	<Links>: <links_num>[,] [Weighted: {0, 1}]]
+	// Note: the comma is either always present as a delimiter or always absent
+	while(getline(finp, line)) {
+		// Skip empty lines
+		if(line.empty())
+			continue;
+		// Consider only subsequent comments
+		if(line[0] != '#')
+			break;
+
+		// 1. Replace the staring comment mark '#' with space to allow "#clusters:"
+		// 2. Replace ':' with space to allow "Clusters:<clsnum>"
+		for(size_t pos = 0; pos != string::npos; pos = line.find(':', pos + 1))
+			line[pos] = ' ';
+
+		// Parse nodes num
+        char *tok = strtok(const_cast<char*>(line.data()), " \t");
+        if(!tok)
+			continue;
+		tolower(tok);
+		if(strcmp(tok, "nodes"))
+			continue;
+		// Read nodes num
+		tok = strtok(nullptr, " \t");
+		if(tok) {
+			// Note: optional trailing ',' is allowed here
+			n = strtoul(tok, nullptr, 10);
+			// Read the number of links
+			tok = strtok(nullptr, " \t");
+			if(tok) {
+				tolower(tok);
+				if(inpfmt != format_arg_NSE && !strcmp(tok, "arcs"))
+					inpfmt = format_arg_NSA;
+				else if(inpfmt != format_arg_NSA && !strcmp(tok, "edges"))
+					inpfmt = format_arg_NSE;
+				else throw domain_error(string(tok).insert(0, "The file format (")
+						.append(") is either inconsistent with the expected one(")
+						+= to_string(inpfmt).append(") or not specified at all\n"));
+				tok = strtok(nullptr, " \t");
+				if(tok) {
+					// Note: optional trailing ',' is allowed here
+					m = strtoul(tok, nullptr, 10);
+					// Read Weighted flag
+					tok = strtok(nullptr, " \t");
+					if(tok && (tolower(tok), !strcmp(tok, "weighted"))
+					&& (tok = strtok(nullptr, " \t")) && strtoul(tok, nullptr, 10) != 0)
+						fputs("WARNING, the network is weighted and this algorithm does not support weights"
+							", so the weights are omitted.\n", stderr);
+				}
+			}
+		}
+		// Get the following line to unify the payload processing
+		getline(finp, line);
+	}
+	assert((inpfmt == format_arg_NSE || inpfmt == format_arg_NSA) && "Unexpected inpfmt");
+
+	// Preallocate containers if possible
+	if(n) {
+		nodes.reserve(n);
+		eiids.reserve(n);
+		ieids.reserve(n);
+	}
+
+	// Parse the body
+	// Note: the processing is started from the read line
+    size_t iline = 0;  // Payload line index (internal id of the cluster)
+    do {
+		// Skip empty lines and comments
+		if(line.empty() || line[0] == '#')
+			continue;
+
+        char *tok = strtok(const_cast<char*>(line.data()), " \t");
+        if(!tok)
+			continue;
+		Id sid = strtoul(tok, nullptr, 10);  // External source id
+        tok = strtok(const_cast<char*>(line.data()), " \t");
+        if(!tok)
+			throw domain_error(string(line).insert(0
+				, "Destination link id is not specified in this line: ").c_str());
+		Id did = strtoul(tok, nullptr, 10);  // External destination id
+		// Make the mappings and fill the nodes
+		auto ies = eiids.find(sid);  // Index of the external src id
+		if(ies == eiids.end()) {
+			ies = eiids.emplace(sid, eiids.size()).first;
+			ieids.emplace(ieids.size(), sid);
+			nodes.emplace_back();
+		}
+		auto ied = eiids.find(did);  // Index of the external dst id
+		if(ied == eiids.end()) {
+			ied = eiids.emplace(did, eiids.size()).first;
+			ieids.emplace(ieids.size(), did);
+			nodes.emplace_back();
+		}
+		nodes[ies->second].insert(ied->second);
+		// Insert back arc in case of edges
+        if(inpfmt == format_arg_NSE)
+			nodes[ied->second].insert(ies->second);
+		++iline;
+    } while(getline(finp, line));
+    assert(eiids.size() == ieids.size() && nodes.size() == ieids.size()
+		&& "Node mappings are not synchronized");
+
+	// Initialize internal data structures using nodes
+	if(!n)
+		n = nodes.size();
+	if(!m)
+		m = iline * (1 + (inpfmt == format_arg_NSE));
+
+	if(reverse)
+		delete[] reverse;
+	reverse = new Id[m];
+	memset(reverse, 0, sizeof(Id)*m);
+	if(min_cn)
+		delete[] min_cn;
+	min_cn = new int[m];
+	memset(min_cn, 0, sizeof(int) * m);
+
+	if(edges)
+		delete[] edges;
+	edges = new Id[m];
+	if(pstart)
+		delete[] pstart;
+	pstart = new Id[n+1];
+	if(degree)
+		delete[] degree;
+	degree = new Degree[n];
+
+	size_t in = 0;
+	size_t ie = 0;
+	pstart[0] = 0;
+	for(auto& nd: nodes) {
+		degree[in++] = nd.size();
+		for(auto did: nd)
+			edges[ie++] = did;
+		pstart[in] = ie;
+		assert(ie == pstart[in-1] + degree[in-1] && "pstart item validation failed");
+	}
+	assert(ie == m && "Arcs number validation failed");
 }
 
 Id Graph::binary_search(const Id *edges, Id b, Id e, Id val) {
-#ifdef _DEBUG_
-	if(e < b)
-		printf("??? WA1 in binary_search\n");
-#endif
+	assert(b <= e && "Invalid indices");
 	if(b == e || edges[e-1] < val)
 		return e;
 	--e;
@@ -192,8 +396,7 @@ Id Graph::binary_search(const Id *edges, Id b, Id e, Id val) {
 		else b = mid+1;
 	}
 #ifdef _DEBUG_
-	if(edges[e] < val)
-		printf("??? WA2 in binary_search\n");
+	assert(edges[e] >= val && "Ordering validation failed");
 #endif
 	return e;
 }
@@ -245,7 +448,7 @@ void Graph::saveLegacy(const char *outfile) {
 	FILE *fout = fopen(out_name.c_str(), "w");
 	if(!fout) {
 		perror(out_name.insert(0, "Error, on opening ").c_str());
-		throw system_error(errno, std::system_category());
+		throw ios_base::failure(strerror(errno));
 	}
 
 	fprintf(fout, "c/n vertex_id cluster_id\n");
@@ -364,7 +567,7 @@ void Graph::pSCAN() {
 			Id idx = edge_buf[i];
 			if(min_cn[idx] != -1) {
 #ifdef _DEBUG_
-				if(min_cn[idx] == 0) printf("WA min_cn!\n");
+				assert(min_cn[idx] && "min_cn item is invalid");
 #endif
 				Id v = edges[idx];
 
@@ -478,8 +681,7 @@ int Graph::similar_check_OP(Id u, Id idx) {
 	Id v = edges[idx];
 
 #ifdef _DEBUG_
-	if(min_cn[idx] == -1||min_cn[idx] == -2)
-		printf("??? WA in similar_check\n");
+	assert(min_cn[idx] >= 0 && "min_cn item validation failed");
 #endif
 
 	if(min_cn[idx] == 0) {
@@ -502,16 +704,15 @@ int Graph::compute_common_neighbor_lowerbound(Id du,Id dv) {
 	int c = (int)(sqrtl((((long double)du) * ((long double)dv)*eps_a2)/eps_b2));
 
 #ifdef _DEBUG_
-	if(((long long)du)*dv*eps_a2 < 0 || ((long long)c)*c*eps_b2 < 0)
-		printf("??? Overflow in similar_check\n");
+	assert(!(((long long)du)*dv*eps_a2 < 0 || ((long long)c)*c*eps_b2 < 0) && "Overflow");
 #endif
 
 	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2)
 		++ c;
 
 #ifdef _DEBUG_
-	if(((long long)c)*((long long)c)*eps_b2 < ((long long)du)*((long long)dv)*eps_a2)
-		printf("??? Wrong common neigbor computation in similar_check\n");
+	assert(((long long)c)*((long long)c)*eps_b2 >= ((long long)du)*((long long)dv)*eps_a2
+		&& "Common neighbor validation failed");
 #endif
 	return c;
 }
@@ -538,7 +739,7 @@ void Graph::prune_and_cross_link(int miu, int *cores, int &cores_e) {
 				int c = compute_common_neighbor_lowerbound(a, b);
 
 #ifdef _DEBUG_
-				if(a < c||b < c) printf("!!! HHH\n");
+				assert(!(a < c || b < c) && "Invalid values");
 #endif
 
 				if(c <= 2) {

@@ -31,15 +31,15 @@ const char *gengetopt_args_info_usage = "Usage: pSCAN [OPTIONS]... [input_networ
 
 const char *gengetopt_args_info_versiontext = "";
 
-const char *gengetopt_args_info_description = "input_network (graph) is specified as either a file in .CNL format, or a\ndirectory containing \"b_degree.bin\" and \"b_adj.bin\"";
+const char *gengetopt_args_info_description = "input_network  - the input graph specified as either a file in the NSL format,\nor a directory containing \"b_degree.bin\" and \"b_adj.bin\" binary files. If\nthe format is not specified explicitly then NSL file is expected and whether it\nis NSA or NSE is identified by the file extension.";
 
 const char *gengetopt_args_info_help[] = {
   "  -h, --help           Print help and exit",
   "  -V, --version        Print version and exit",
-  "  -d, --dir            input network (graph) is specified by the\n                         \"b_degree.bin\" and \"b_adj.bin\" files located in\n                         the specified directory  (default=off)",
-  "  -e, --epsilon=FLOAT  epsilon  (default=`0.2')",
-  "  -m, --mu=INT         epsilon  (default=`3')",
-  "  -l, --legacy         output clustering in the legacy pSCAN format instead of\n                         the standard CNL  (default=off)",
+  "  -f, --format=ENUM    format of the input graph  (possible values=\"BIN\",\n                         \"NSA\", \"NSE\")",
+  "  -e, --epsilon=FLOAT  similarity threshold (typically E [1e-4, 0.5] )\n                         (default=`0.2')",
+  "  -m, --mu=INT         size threshold  (default=`3')",
+  "  -l, --legacy         output clustering in the legacy pSCAN format instead of\n                         the standard NSL  (default=off)",
   "  -o, --output=STRING  output file if the resulting clustering should be saved",
     0
 };
@@ -49,6 +49,7 @@ typedef enum {ARG_NO
   , ARG_STRING
   , ARG_INT
   , ARG_FLOAT
+  , ARG_ENUM
 } cmdline_parser_arg_type;
 
 static
@@ -63,6 +64,8 @@ cmdline_parser_internal (int argc, char **argv, struct gengetopt_args_info *args
 static int
 cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *prog_name, const char *additional_error);
 
+const char *cmdline_parser_format_values[] = {"BIN", "NSA", "NSE", 0}; /*< Possible values for format. */
+
 static char *
 gengetopt_strdup (const char *s);
 
@@ -71,7 +74,7 @@ void clear_given (struct gengetopt_args_info *args_info)
 {
   args_info->help_given = 0 ;
   args_info->version_given = 0 ;
-  args_info->dir_given = 0 ;
+  args_info->format_given = 0 ;
   args_info->epsilon_given = 0 ;
   args_info->mu_given = 0 ;
   args_info->legacy_given = 0 ;
@@ -82,7 +85,8 @@ static
 void clear_args (struct gengetopt_args_info *args_info)
 {
   FIX_UNUSED (args_info);
-  args_info->dir_flag = 0;
+  args_info->format_arg = format__NULL;
+  args_info->format_orig = NULL;
   args_info->epsilon_arg = 0.2;
   args_info->epsilon_orig = NULL;
   args_info->mu_arg = 3;
@@ -100,7 +104,7 @@ void init_args_info(struct gengetopt_args_info *args_info)
 
   args_info->help_help = gengetopt_args_info_help[0] ;
   args_info->version_help = gengetopt_args_info_help[1] ;
-  args_info->dir_help = gengetopt_args_info_help[2] ;
+  args_info->format_help = gengetopt_args_info_help[2] ;
   args_info->epsilon_help = gengetopt_args_info_help[3] ;
   args_info->mu_help = gengetopt_args_info_help[4] ;
   args_info->legacy_help = gengetopt_args_info_help[5] ;
@@ -191,6 +195,7 @@ static void
 cmdline_parser_release (struct gengetopt_args_info *args_info)
 {
   unsigned int i;
+  free_string_field (&(args_info->format_orig));
   free_string_field (&(args_info->epsilon_orig));
   free_string_field (&(args_info->mu_orig));
   free_string_field (&(args_info->output_arg));
@@ -206,13 +211,54 @@ cmdline_parser_release (struct gengetopt_args_info *args_info)
   clear_given (args_info);
 }
 
+/**
+ * @param val the value to check
+ * @param values the possible values
+ * @return the index of the matched value:
+ * -1 if no value matched,
+ * -2 if more than one value has matched
+ */
+static int
+check_possible_values(const char *val, const char *values[])
+{
+  int i, found, last;
+  size_t len;
+
+  if (!val)   /* otherwise strlen() crashes below */
+    return -1; /* -1 means no argument for the option */
+
+  found = last = 0;
+
+  for (i = 0, len = strlen(val); values[i]; ++i)
+    {
+      if (strncmp(val, values[i], len) == 0)
+        {
+          ++found;
+          last = i;
+          if (strlen(values[i]) == len)
+            return i; /* exact macth no need to check more */
+        }
+    }
+
+  if (found == 1) /* one match: OK */
+    return last;
+
+  return (found ? -2 : -1); /* return many values or none matched */
+}
+
 
 static void
 write_into_file(FILE *outfile, const char *opt, const char *arg, const char *values[])
 {
-  FIX_UNUSED (values);
+  int found = -1;
   if (arg) {
-    fprintf(outfile, "%s=\"%s\"\n", opt, arg);
+    if (values) {
+      found = check_possible_values(arg, values);      
+    }
+    if (found >= 0)
+      fprintf(outfile, "%s=\"%s\" # %s\n", opt, arg, values[found]);
+    else
+      fprintf(outfile, "%s=\"%s\"\n", opt, arg);
   } else {
     fprintf(outfile, "%s\n", opt);
   }
@@ -234,8 +280,8 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "help", 0, 0 );
   if (args_info->version_given)
     write_into_file(outfile, "version", 0, 0 );
-  if (args_info->dir_given)
-    write_into_file(outfile, "dir", 0, 0 );
+  if (args_info->format_given)
+    write_into_file(outfile, "format", args_info->format_orig, cmdline_parser_format_values);
   if (args_info->epsilon_given)
     write_into_file(outfile, "epsilon", args_info->epsilon_orig, 0);
   if (args_info->mu_given)
@@ -360,6 +406,12 @@ cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *pro
   FIX_UNUSED (additional_error);
 
   /* checks for required options */
+  if (! args_info->format_given)
+    {
+      fprintf (stderr, "%s: '--format' ('-f') option required%s\n", prog_name, (additional_error ? additional_error : ""));
+      error_occurred = 1;
+    }
+  
   if (! args_info->epsilon_given)
     {
       fprintf (stderr, "%s: '--epsilon' ('-e') option required%s\n", prog_name, (additional_error ? additional_error : ""));
@@ -438,7 +490,18 @@ int update_arg(void *field, char **orig_field,
       return 1; /* failure */
     }
 
-  FIX_UNUSED (default_value);
+  if (possible_values && (found = check_possible_values((value ? value : default_value), possible_values)) < 0)
+    {
+      if (short_opt != '-')
+        fprintf (stderr, "%s: %s argument, \"%s\", for option `--%s' (`-%c')%s\n", 
+          package_name, (found == -2) ? "ambiguous" : "invalid", value, long_opt, short_opt,
+          (additional_error ? additional_error : ""));
+      else
+        fprintf (stderr, "%s: %s argument, \"%s\", for option `--%s'%s\n", 
+          package_name, (found == -2) ? "ambiguous" : "invalid", value, long_opt,
+          (additional_error ? additional_error : ""));
+      return 1; /* failure */
+    }
     
   if (field_given && *field_given && ! override)
     return 0;
@@ -458,6 +521,9 @@ int update_arg(void *field, char **orig_field,
     break;
   case ARG_FLOAT:
     if (val) *((float *)field) = (float)strtod (val, &stop_char);
+    break;
+  case ARG_ENUM:
+    if (val) *((int *)field) = found;
     break;
   case ARG_STRING:
     if (val) {
@@ -544,7 +610,7 @@ cmdline_parser_internal (
       static struct option long_options[] = {
         { "help",	0, NULL, 'h' },
         { "version",	0, NULL, 'V' },
-        { "dir",	0, NULL, 'd' },
+        { "format",	1, NULL, 'f' },
         { "epsilon",	1, NULL, 'e' },
         { "mu",	1, NULL, 'm' },
         { "legacy",	0, NULL, 'l' },
@@ -552,7 +618,7 @@ cmdline_parser_internal (
         { 0,  0, 0, 0 }
       };
 
-      c = getopt_long (argc, argv, "hVde:m:lo:", long_options, &option_index);
+      c = getopt_long (argc, argv, "hVf:e:m:lo:", long_options, &option_index);
 
       if (c == -1) break;	/* Exit from `while (1)' loop.  */
 
@@ -568,17 +634,19 @@ cmdline_parser_internal (
           cmdline_parser_free (&local_args_info);
           exit (EXIT_SUCCESS);
 
-        case 'd':	/* input network (graph) is specified by the \"b_degree.bin\" and \"b_adj.bin\" files located in the specified directory.  */
+        case 'f':	/* format of the input graph.  */
         
         
-          if (update_arg((void *)&(args_info->dir_flag), 0, &(args_info->dir_given),
-              &(local_args_info.dir_given), optarg, 0, 0, ARG_FLAG,
-              check_ambiguity, override, 1, 0, "dir", 'd',
+          if (update_arg( (void *)&(args_info->format_arg), 
+               &(args_info->format_orig), &(args_info->format_given),
+              &(local_args_info.format_given), optarg, cmdline_parser_format_values, 0, ARG_ENUM,
+              check_ambiguity, override, 0, 0,
+              "format", 'f',
               additional_error))
             goto failure;
         
           break;
-        case 'e':	/* epsilon.  */
+        case 'e':	/* similarity threshold (typically E [1e-4, 0.5] ).  */
         
         
           if (update_arg( (void *)&(args_info->epsilon_arg), 
@@ -590,7 +658,7 @@ cmdline_parser_internal (
             goto failure;
         
           break;
-        case 'm':	/* epsilon.  */
+        case 'm':	/* size threshold.  */
         
         
           if (update_arg( (void *)&(args_info->mu_arg), 
@@ -602,7 +670,7 @@ cmdline_parser_internal (
             goto failure;
         
           break;
-        case 'l':	/* output clustering in the legacy pSCAN format instead of the standard CNL.  */
+        case 'l':	/* output clustering in the legacy pSCAN format instead of the standard NSL.  */
         
         
           if (update_arg((void *)&(args_info->legacy_flag), 0, &(args_info->legacy_given),

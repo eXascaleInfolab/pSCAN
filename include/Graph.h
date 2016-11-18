@@ -7,6 +7,8 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include "cmdline.h"
 
 
 namespace pscan {
@@ -16,12 +18,13 @@ typedef int  Degree;  // ATTENTION: degrees are specified as int in the input fi
 
 using std::string;
 using std::vector;
+using std::unordered_map;
 using std::pair;
 
 class Graph {
-	bool dir; //input network is specified using dir with binary files VS .CNL file
-	string input; //input network (graph)
-	Id n, m; //number of nodes and edges of the graph
+	enum_format inpfmt;  // Input format
+	string input;  // Input network (graph)
+	Id n, m; //number of nodes and ARCS (2*edges) of the graph
 
 	const float eps;
 	int eps_a2, eps_b2, miu; // eps_a2/eps_b2 = eps^2
@@ -34,7 +37,7 @@ class Graph {
 	Id *pa;
 	int *rank; //pa and rank are used for the disjoint-set data structure
 
-	Id *cid; //cluster id
+	Id *cid; //cluster ids
 
 	Degree *degree;
 	Degree *similar_degree; //number of adjacent edges with similarity no less than epsilon
@@ -42,8 +45,9 @@ class Graph {
 
 	vector<pair<int,int> > noncore_cluster;
 
+	unordered_map<Id, Id>  ieids;  // Map from internal to external ids of nodes
 public:
-	Graph(float aeps, int amiu, const char *ainput, bool adir=false);
+	Graph(float aeps, int amiu, const char *ainput, enum_format ainpfmt);
 	~Graph();
 
 	Graph(const Graph&)=delete;
@@ -78,5 +82,8 @@ private:
 };
 
 }  // pscan
+
+std::string to_string(enum_format fmt);  //!< Convert to string
+void tolower(char* text);  //!< Convert string to lower case
 
 #endif

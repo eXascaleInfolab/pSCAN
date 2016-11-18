@@ -34,28 +34,31 @@ extern "C" {
 #define CMDLINE_PARSER_VERSION "0.2"
 #endif
 
+enum enum_format { format__NULL = -1, format_arg_BIN = 0, format_arg_NSA, format_arg_NSE };
+
 /** @brief Where the command line options are stored */
 struct gengetopt_args_info
 {
   const char *help_help; /**< @brief Print help and exit help description.  */
   const char *version_help; /**< @brief Print version and exit help description.  */
-  int dir_flag;	/**< @brief input network (graph) is specified by the \"b_degree.bin\" and \"b_adj.bin\" files located in the specified directory (default=off).  */
-  const char *dir_help; /**< @brief input network (graph) is specified by the \"b_degree.bin\" and \"b_adj.bin\" files located in the specified directory help description.  */
-  float epsilon_arg;	/**< @brief epsilon (default='0.2').  */
-  char * epsilon_orig;	/**< @brief epsilon original value given at command line.  */
-  const char *epsilon_help; /**< @brief epsilon help description.  */
-  int mu_arg;	/**< @brief epsilon (default='3').  */
-  char * mu_orig;	/**< @brief epsilon original value given at command line.  */
-  const char *mu_help; /**< @brief epsilon help description.  */
-  int legacy_flag;	/**< @brief output clustering in the legacy pSCAN format instead of the standard CNL (default=off).  */
-  const char *legacy_help; /**< @brief output clustering in the legacy pSCAN format instead of the standard CNL help description.  */
+  enum enum_format format_arg;	/**< @brief format of the input graph.  */
+  char * format_orig;	/**< @brief format of the input graph original value given at command line.  */
+  const char *format_help; /**< @brief format of the input graph help description.  */
+  float epsilon_arg;	/**< @brief similarity threshold (typically E [1e-4, 0.5] ) (default='0.2').  */
+  char * epsilon_orig;	/**< @brief similarity threshold (typically E [1e-4, 0.5] ) original value given at command line.  */
+  const char *epsilon_help; /**< @brief similarity threshold (typically E [1e-4, 0.5] ) help description.  */
+  int mu_arg;	/**< @brief size threshold (default='3').  */
+  char * mu_orig;	/**< @brief size threshold original value given at command line.  */
+  const char *mu_help; /**< @brief size threshold help description.  */
+  int legacy_flag;	/**< @brief output clustering in the legacy pSCAN format instead of the standard NSL (default=off).  */
+  const char *legacy_help; /**< @brief output clustering in the legacy pSCAN format instead of the standard NSL help description.  */
   char * output_arg;	/**< @brief output file if the resulting clustering should be saved.  */
   char * output_orig;	/**< @brief output file if the resulting clustering should be saved original value given at command line.  */
   const char *output_help; /**< @brief output file if the resulting clustering should be saved help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
   unsigned int version_given ;	/**< @brief Whether version was given.  */
-  unsigned int dir_given ;	/**< @brief Whether dir was given.  */
+  unsigned int format_given ;	/**< @brief Whether format was given.  */
   unsigned int epsilon_given ;	/**< @brief Whether epsilon was given.  */
   unsigned int mu_given ;	/**< @brief Whether mu was given.  */
   unsigned int legacy_given ;	/**< @brief Whether legacy was given.  */
@@ -185,6 +188,8 @@ void cmdline_parser_free (struct gengetopt_args_info *args_info);
  */
 int cmdline_parser_required (struct gengetopt_args_info *args_info,
   const char *prog_name);
+
+extern const char *cmdline_parser_format_values[];  /**< @brief Possible values for format. */
 
 
 #ifdef __cplusplus

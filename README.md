@@ -9,13 +9,32 @@ Modified by Artem Lutov <artem@exascale.info>
 
 # Usage
 ```
-./pscan graph_directory epsilon mu [output]
+$ ./pscan -h
+pSCAN 0.2
+
+Clusters input network considering overlaps and building Exact Structural Graph
+
+Usage: pSCAN [OPTIONS]... [input_network]...
+
+input_network  - graph specified as either a file in the CNL format, or a
+directory containing "b_degree.bin" and "b_adj.bin"
+
+  -h, --help           Print help and exit
+  -V, --version        Print version and exit
+  -d, --dir            input network (graph) is specified by the
+                         "b_degree.bin" and "b_adj.bin" files located in
+                         the specified directory  (default=off)
+  -e, --epsilon=FLOAT  epsilon  (default=`0.2')
+  -m, --mu=INT         epsilon  (default=`3')
+  -l, --legacy         output clustering in the legacy pSCAN format instead of
+                         the standard CNL  (default=off)
+  -o, --output=STRING  output file if the resulting clustering should be saved
 ```
 For example
 ```
-./pscan ./test 0.2 3 output
+./pscan -d -e=0.2 -m=3 -l -o test/clusters.txt test
 ```
- `output` should be specified to save the resulting clustering into ${dir}/result-${epsilon}-${mu}.txt.
+ `--output` should be specified to save the resulting clustering into the specified directory (${dir}/result-${epsilon}-${mu}.txt by default).
 
 The input network to be clustered is specified by 2 BINARY files:
 - Specification of the network properties and nodes (vertices) degrees, `b_degree.bin`:
