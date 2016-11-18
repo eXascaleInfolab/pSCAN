@@ -94,6 +94,7 @@ The input network to be clustered is specified either in NSL (nsa/nse) format by
 	0 2 3   // neighbours of vertex 1
 	...
 	```
+  
 ## Output
 The CNL (clusters nodes list) output is a standard format, generalization of the Stanford SNAP ground-truth communities. It is an input format for various NMI-evaluation algorithms. Each line of the file corresponds to the single resulting cluster, where member nodes are specified separated by the space/tab with optional share. For example:
 ```
