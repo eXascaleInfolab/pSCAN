@@ -16,28 +16,39 @@ Clusters input network considering overlaps and building Exact Structural Graph
 
 Usage: pSCAN [OPTIONS]... [input_network]...
 
-input_network  - graph specified as either a file in the CNL format, or a
-directory containing "b_degree.bin" and "b_adj.bin"
+input_network  - the input graph specified as either a file in the NSL format,
+or a directory containing "b_degree.bin" and "b_adj.bin" binary files. If
+the format is not specified explicitly then NSL file is expected and whether it
+is NSA or NSE is identified by the file extension.
 
   -h, --help           Print help and exit
   -V, --version        Print version and exit
-  -d, --dir            input network (graph) is specified by the
-                         "b_degree.bin" and "b_adj.bin" files located in
-                         the specified directory  (default=off)
-  -e, --epsilon=FLOAT  epsilon  (default=`0.2')
-  -m, --mu=INT         epsilon  (default=`3')
+  -f, --format=ENUM    format of the input graph  (possible values="BIN",
+                         "NSA", "NSE")
+  -e, --epsilon=FLOAT  similarity threshold (typically E [1e-4, 0.5] )
+                         (default=`0.2')
+  -m, --mu=INT         size threshold  (default=`3')
   -l, --legacy         output clustering in the legacy pSCAN format instead of
-                         the standard CNL  (default=off)
+                         the standard NSL  (default=off)
   -o, --output=STRING  output file if the resulting clustering should be saved
 ```
 For example
 ```
-./pscan -d -e=0.2 -m=3 -l -o test/clusters.txt test
+./pscan -e=0.2 -m=3 -l -o test/clusters.txt -f=BIN test
 ```
- `--output` should be specified to save the resulting clustering into the specified directory (${dir}/result-${epsilon}-${mu}.txt by default).
-
-The input network to be clustered is specified by 2 BINARY files:
-- Specification of the network properties and nodes (vertices) degrees, `b_degree.bin`:
+The input network to be clustered is specified either in NSL (nsa/nse) format by 2 BINARY files:
+1. NSL format (nsa - arcs, directed network; nse - edges, undirected network) specifies network links is each line of the file as node ids separated by the space delimiter:
+```
+# Example Network .nse (edges - undirected)
+# Nodes: 3  Edges: 3   Weighted: 0
+# Note that the number of links corresponds to the number of payload lines in the file
+0 1
+# Empty lines and comments are allowed
+0 2
+2 1
+```
+2. Binary format:
+  - Specification of the network properties and nodes (vertices) degrees, `b_degree.bin`:
 ```
 4  // <id_len_in_bytes>
 13 // <nodes_number> (n)
@@ -47,7 +58,7 @@ The input network to be clustered is specified by 2 BINARY files:
 ...
 3  // <noden_degree>
 ```
-- Spase separated List of neigbours for each node in a new line, `b_adj.bin`:
+  - Spase separated List of neigbours for each node in a new line, `b_adj.bin`:
 ```
 1 2 3 4 // neighbours of vertex 0
 0 2 3   // neighbours of vertex 1
