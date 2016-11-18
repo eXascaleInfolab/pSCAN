@@ -25,8 +25,10 @@ is NSA or NSE is identified by the file extension or header.
   -V, --version        Print version and exit
   -f, --format=ENUM    format of the input graph  (possible values="BIN",
                          "NSA", "NSE")
-  -e, --epsilon=FLOAT  similarity threshold (typically E [1e-4, 0.5] )
-                         (default=`0.2')
+  -e, --epsilon=FLOAT  similarity threshold (typically E [0.05, 0.95]), where a
+                         higher value corresponds to the higher granularity and
+                         more careful differentiation, a lower value yields
+                         large clusters  (default=`0.35')
   -m, --mu=INT         size threshold  (default=`3')
   -l, --legacy         output clustering in the legacy pSCAN format instead of
                          the standard NSL  (default=off)
@@ -34,7 +36,9 @@ is NSA or NSE is identified by the file extension or header.
 ```
 For example
 ```
-./pscan -e=0.2 -m=3 -l -o test/clusters.txt -f=BIN test
+./pscan -e 0.7 -o graph-e7.cnl graph.nse
+
+./pscan -e 0.2 -m 3 -l -o test/clusters.txt -f=BIN test
 ```
 The input network to be clustered is specified either in NSL (nsa/nse) format by 2 BINARY files:
 

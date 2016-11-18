@@ -37,7 +37,7 @@ const char *gengetopt_args_info_help[] = {
   "  -h, --help           Print help and exit",
   "  -V, --version        Print version and exit",
   "  -f, --format=ENUM    format of the input graph  (possible values=\"BIN\",\n                         \"NSA\", \"NSE\")",
-  "  -e, --epsilon=FLOAT  similarity threshold (typically E [1e-4, 0.5] )\n                         (default=`0.2')",
+  "  -e, --epsilon=FLOAT  similarity threshold (typically E [0.05, 0.95]), where a\n                         higher value corresponds to the higher granularity and\n                         more careful differentiation, a lower value yields\n                         large clusters  (default=`0.35')",
   "  -m, --mu=INT         size threshold  (default=`3')",
   "  -l, --legacy         output clustering in the legacy pSCAN format instead of\n                         the standard NSL  (default=off)",
   "  -o, --output=STRING  output file if the resulting clustering should be saved",
@@ -85,7 +85,7 @@ void clear_args (struct gengetopt_args_info *args_info)
   FIX_UNUSED (args_info);
   args_info->format_arg = format__NULL;
   args_info->format_orig = NULL;
-  args_info->epsilon_arg = 0.2;
+  args_info->epsilon_arg = 0.35;
   args_info->epsilon_orig = NULL;
   args_info->mu_arg = 3;
   args_info->mu_orig = NULL;
@@ -598,12 +598,12 @@ cmdline_parser_internal (
             goto failure;
         
           break;
-        case 'e':	/* similarity threshold (typically E [1e-4, 0.5] ).  */
+        case 'e':	/* similarity threshold (typically E [0.05, 0.95]), where a higher value corresponds to the higher granularity and more careful differentiation, a lower value yields large clusters.  */
         
         
           if (update_arg( (void *)&(args_info->epsilon_arg), 
                &(args_info->epsilon_orig), &(args_info->epsilon_given),
-              &(local_args_info.epsilon_given), optarg, 0, "0.2", ARG_FLOAT,
+              &(local_args_info.epsilon_given), optarg, 0, "0.35", ARG_FLOAT,
               check_ambiguity, override, 0, 0,
               "epsilon", 'e',
               additional_error))

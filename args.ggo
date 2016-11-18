@@ -16,7 +16,7 @@ option  "format" f  "format of the input graph"  values="BIN","NSA","NSE" enum
 #option  "arcs" a  "input file int the nsl format is nsa (represent arcs, not edges)"  flag off
 
 # Processing params
-option  "epsilon" e  "similarity threshold (typically E [1e-4, 0.5] )"  float default="0.2"
+option  "epsilon" e  "similarity threshold (typically E [0.05, 0.95]), where a higher value corresponds to the higher granularity and more careful differentiation, a lower value yields large clusters"  float default="0.35"
 option  "mu" m  "size threshold"  int default="3"
 # Output
 option  "legacy" l  "output clustering in the legacy pSCAN format instead of the standard NSL"  flag off

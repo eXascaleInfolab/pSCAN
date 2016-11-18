@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 	Graph *graph = new Graph(args_info.epsilon_arg, args_info.mu_arg
 		, args_info.inputs[0], args_info.format_arg);
 	graph->load();
-	puts("The input graph is loaded\n");
+	puts("The input graph is loaded");
 
 	// Perform the clustering
 	graph->pSCAN();

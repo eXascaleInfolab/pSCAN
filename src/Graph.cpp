@@ -447,8 +447,6 @@ void Graph::output(const char *outfile, bool lgcfmt) {
 }
 
 void Graph::saveLegacy(const char *outfile) {
-	printf("\t*** Start write result into disk!\n");
-
 	string out_name = outfile ? string(outfile)
 		: input + "/result-" + to_string(eps) + "-" + to_string(miu) + ".txt";
 	FILE *fout = fopen(out_name.c_str(), "w");
@@ -457,30 +455,83 @@ void Graph::saveLegacy(const char *outfile) {
 		throw ios_base::failure(strerror(errno));
 	}
 
-	fputs("# vertex_id cluster_id\n# Core clusters ---\n", fout);
-	// Map to the original external ids if required
-	if(!ieids.empty())
-		for(Id i = 0;i < n;i ++) if(similar_degree[i] >= miu)
-			fprintf(fout, "%d %d\n", ieids[i], cid[pa[i]]);
-	else for(Id i = 0;i < n;i ++) if(similar_degree[i] >= miu)
-		fprintf(fout, "%d %d\n", i, cid[pa[i]]);
+	fputs("# vertex_id cluster_id\n", fout);
+	if(!noncore_cluster.empty())
+		fputs("# Core clusters ---\n", fout);
+	// Map internal ids to the original external ids if required
+	for(Id i = 0;i < n;i ++) if(similar_degree[i] >= miu)
+		fprintf(fout, "%d %d\n", !ieids.empty() ? ieids[i] : i, cid[pa[i]]);
 
 
 	if(!noncore_cluster.empty()) {
 		fputs("\n# Non-core clusters ---\n", fout);
 		sort(noncore_cluster.begin(), noncore_cluster.end());
 		noncore_cluster.erase(unique(noncore_cluster.begin(), noncore_cluster.end()), noncore_cluster.end());
-		if(!ieids.empty())
-			for(Id i = 0;i < noncore_cluster.size();i ++)
-				fprintf(fout, "%d %d\n", ieids[noncore_cluster[i].second], noncore_cluster[i].first);
-		else for(Id i = 0;i < noncore_cluster.size();i ++)
-			fprintf(fout, "%d %d\n", noncore_cluster[i].second, noncore_cluster[i].first);
+		// Map internal ids to the original external ids if required
+		for(Id i = 0;i < noncore_cluster.size();i ++)
+			fprintf(fout, "%d %d\n", !ieids.empty()
+				? ieids[noncore_cluster[i].second] : noncore_cluster[i].second
+				, noncore_cluster[i].first);
 	}
 
 	fclose(fout);
 }
 
 void Graph::saveCNL(const char *outfile) {
+	FILE *fout = fopen(outfile, "w");
+
+	if(!fout) {
+		perror(string("Error, on opening ").append(outfile).c_str());
+		throw ios_base::failure(strerror(errno));
+	}
+
+	typedef vector<Id>  NodeIds;
+	unordered_map<Id, NodeIds>  cls;
+	cls.reserve(sqrt(n));  // Usually the number of clusters <= sqrt(nodes_num)
+	for(Id i = 0; i < n; ++i)
+		if(similar_degree[i] >= miu) {
+			const auto key = cid[pa[i]];
+			auto icl = cls.find(key);
+			if(icl == cls.end());
+				icl = cls.emplace(key, NodeIds()).first;
+			// Map internal ids to the original external ids if required
+			icl->second.push_back(!ieids.empty() ? ieids[i] : i);
+		}
+
+	// Save the optional Header
+	fprintf(fout, "# Clusters: %lu, Nodes: %u, Fuzzy: 0\n"
+		"# Each line contains member nodes of each resulting cluster\n", cls.size(), n);
+	// Save the Body
+	if(!noncore_cluster.empty())
+		fputs("# Core clusters ---\n", fout);
+	for(const auto& cl: cls) {
+		for(const auto& nid: cl.second)
+			fprintf(fout, "%u ", nid);
+		fputs("\n", fout);
+	}
+
+	if(!noncore_cluster.empty()) {
+		sort(noncore_cluster.begin(), noncore_cluster.end());
+		noncore_cluster.erase(unique(noncore_cluster.begin(), noncore_cluster.end()), noncore_cluster.end());
+		cls.clear();
+		for(Id i = 0; i < noncore_cluster.size(); ++i) {
+			const auto key = noncore_cluster[i].first;
+			auto icl = cls.find(key);
+			if(icl == cls.end());
+				icl = cls.emplace(key, NodeIds()).first;
+			// Map internal ids to the original external ids if required
+			icl->second.push_back(!ieids.empty() ? ieids[noncore_cluster[i].second] : noncore_cluster[i].second);
+		}
+		fputs("\n# Non-core clusters ---\n", fout);
+		// Save the clusters
+		for(const auto& cl: cls) {
+			for(const auto& nid: cl.second)
+				fprintf(fout, "%u ", nid);
+			fputs("\n", fout);
+		}
+	}
+
+	fclose(fout);
 }
 
 void Graph::pSCAN() {

@@ -44,9 +44,9 @@ struct gengetopt_args_info
   enum enum_format format_arg;	/**< @brief format of the input graph.  */
   char * format_orig;	/**< @brief format of the input graph original value given at command line.  */
   const char *format_help; /**< @brief format of the input graph help description.  */
-  float epsilon_arg;	/**< @brief similarity threshold (typically E [1e-4, 0.5] ) (default='0.2').  */
-  char * epsilon_orig;	/**< @brief similarity threshold (typically E [1e-4, 0.5] ) original value given at command line.  */
-  const char *epsilon_help; /**< @brief similarity threshold (typically E [1e-4, 0.5] ) help description.  */
+  float epsilon_arg;	/**< @brief similarity threshold (typically E [0.05, 0.95]), where a higher value corresponds to the higher granularity and more careful differentiation, a lower value yields large clusters (default='0.35').  */
+  char * epsilon_orig;	/**< @brief similarity threshold (typically E [0.05, 0.95]), where a higher value corresponds to the higher granularity and more careful differentiation, a lower value yields large clusters original value given at command line.  */
+  const char *epsilon_help; /**< @brief similarity threshold (typically E [0.05, 0.95]), where a higher value corresponds to the higher granularity and more careful differentiation, a lower value yields large clusters help description.  */
   int mu_arg;	/**< @brief size threshold (default='3').  */
   char * mu_orig;	/**< @brief size threshold original value given at command line.  */
   const char *mu_help; /**< @brief size threshold help description.  */
