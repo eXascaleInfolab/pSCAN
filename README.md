@@ -4,7 +4,7 @@ The paper: *["pSCAN: Fast and Exact Structural Graph Clustering"](https://www.cs
 
 Author: Dr. [Lijun Chang](https://www.cse.unsw.edu.au/~ljchang/) <ljchang@cse.unsw.edu.au>
 
-This is the refactored version of the pScan, the unsafe code and most of the formatting were not modified. The I/O will be extended to be natively applicable for the [PyCaBeM](https://github.com/eXascaleInfolab/PyCABeM) clustering benchmark.  
+This is the refactored version of the pScan, the unsafe code and original data structures were NOT modified. The I/O formats are extended to be natively applicable for the [PyCaBeM](https://github.com/eXascaleInfolab/PyCABeM) clustering benchmark.  
 Modified by Artem Lutov <artem@exascale.info>
 
 # Usage
@@ -37,30 +37,34 @@ For example
 ./pscan -e=0.2 -m=3 -l -o test/clusters.txt -f=BIN test
 ```
 The input network to be clustered is specified either in NSL (nsa/nse) format by 2 BINARY files:
+
 1. NSL format (nsa - arcs, directed network; nse - edges, undirected network) specifies network links is each line of the file as node ids separated by the space delimiter:
-```
-# Example Network .nse (edges - undirected)
-# Nodes: 3  Edges: 3   Weighted: 0
-# Note that the number of links corresponds to the number of payload lines in the file
-0 1
-# Empty lines and comments are allowed
-0 2
-2 1
-```
+
+	```
+	# Example Network .nse (edges - undirected)
+	# Nodes: 3  Edges: 3   Weighted: 0
+	# Note that the number of links corresponds to the number of payload lines in the file
+	0 1
+	# Empty lines and comments are allowed
+	0 2
+	2 1
+	```
 2. Binary format:
   - Specification of the network properties and nodes (vertices) degrees, `b_degree.bin`:
-```
-4  // <id_len_in_bytes>
-13 // <nodes_number> (n)
-48 // <arcs_number> (= 2 * edges_num = 2*m)
-4  // <node1_degree>
-3  // <node2_degree>
-...
-3  // <noden_degree>
-```
+  
+	```
+	4  // <id_len_in_bytes>
+	13 // <nodes_number> (n)
+	48 // <arcs_number> (= 2 * edges_num = 2*m)
+	4  // <node1_degree>
+	3  // <node2_degree>
+	...
+	3  // <noden_degree>
+	```
   - Spase separated List of neigbours for each node in a new line, `b_adj.bin`:
-```
-1 2 3 4 // neighbours of vertex 0
-0 2 3   // neighbours of vertex 1
-...
-```
+  
+	```
+	1 2 3 4 // neighbours of vertex 0
+	0 2 3   // neighbours of vertex 1
+	...
+	```
