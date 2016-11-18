@@ -39,7 +39,7 @@ const char *gengetopt_args_info_help[] = {
   "  -f, --format=ENUM    format of the input graph  (possible values=\"BIN\",\n                         \"NSA\", \"NSE\")",
   "  -e, --epsilon=FLOAT  similarity threshold (typically E [0.05, 0.95]), where a\n                         higher value corresponds to the higher granularity and\n                         more careful differentiation, a lower value yields\n                         large clusters  (default=`0.35')",
   "  -m, --mu=INT         size threshold  (default=`3')",
-  "  -l, --legacy         output clustering in the legacy pSCAN format instead of\n                         the standard NSL  (default=off)",
+  "  -l, --legacy         output clustering in the legacy pSCAN format instead of\n                         the standard CNL  (default=off)",
   "  -o, --output=STRING  output file if the resulting clustering should be saved",
     0
 };
@@ -622,7 +622,7 @@ cmdline_parser_internal (
             goto failure;
         
           break;
-        case 'l':	/* output clustering in the legacy pSCAN format instead of the standard NSL.  */
+        case 'l':	/* output clustering in the legacy pSCAN format instead of the standard CNL.  */
         
         
           if (update_arg((void *)&(args_info->legacy_flag), 0, &(args_info->legacy_given),

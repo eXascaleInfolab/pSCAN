@@ -50,8 +50,8 @@ struct gengetopt_args_info
   int mu_arg;	/**< @brief size threshold (default='3').  */
   char * mu_orig;	/**< @brief size threshold original value given at command line.  */
   const char *mu_help; /**< @brief size threshold help description.  */
-  int legacy_flag;	/**< @brief output clustering in the legacy pSCAN format instead of the standard NSL (default=off).  */
-  const char *legacy_help; /**< @brief output clustering in the legacy pSCAN format instead of the standard NSL help description.  */
+  int legacy_flag;	/**< @brief output clustering in the legacy pSCAN format instead of the standard CNL (default=off).  */
+  const char *legacy_help; /**< @brief output clustering in the legacy pSCAN format instead of the standard CNL help description.  */
   char * output_arg;	/**< @brief output file if the resulting clustering should be saved.  */
   char * output_orig;	/**< @brief output file if the resulting clustering should be saved original value given at command line.  */
   const char *output_help; /**< @brief output file if the resulting clustering should be saved help description.  */
