@@ -320,7 +320,7 @@ void Graph::loadNSL() {
         if(!tok)
 			continue;
 		Id sid = strtoul(tok, nullptr, 10);  // External source id
-        tok = strtok(const_cast<char*>(line.data()), " \t");
+        tok = strtok(nullptr, " \t");
         if(!tok)
 			throw domain_error(string(line).insert(0
 				, "Destination link id is not specified in this line: ").c_str());
@@ -339,6 +339,8 @@ void Graph::loadNSL() {
 			nodes.emplace_back();
 		}
 		nodes[ies->second].insert(ied->second);
+		//fprintf(stderr, "+ arc: %u %u  [%u %u]\n", ies->second, ied->second, sid, did);
+
 		// Insert back arc in case of edges
         if(inpfmt == format_arg_NSE)
 			nodes[ied->second].insert(ies->second);
@@ -376,13 +378,17 @@ void Graph::loadNSL() {
 	size_t ie = 0;
 	pstart[0] = 0;
 	for(auto& nd: nodes) {
+		//fprintf(stderr, "nodes[%lu] size: %lu\n", in, nd.size());
 		degree[in++] = nd.size();
 		for(auto did: nd)
 			edges[ie++] = did;
 		pstart[in] = ie;
 		assert(ie == pstart[in-1] + degree[in-1] && "pstart item validation failed");
 	}
-	assert(ie == m && "Arcs number validation failed");
+	if(ie != m) {
+		fprintf(stderr, "ie: %lu, m: %u\n", ie, m);
+		assert(0 && "Arcs number validation failed");
+	}
 }
 
 Id Graph::binary_search(const Id *edges, Id b, Id e, Id val) {
@@ -451,16 +457,24 @@ void Graph::saveLegacy(const char *outfile) {
 		throw ios_base::failure(strerror(errno));
 	}
 
-	fprintf(fout, "c/n vertex_id cluster_id\n");
+	fputs("# vertex_id cluster_id\n# Core clusters ---\n", fout);
+	// Map to the original external ids if required
+	if(!ieids.empty())
+		for(Id i = 0;i < n;i ++) if(similar_degree[i] >= miu)
+			fprintf(fout, "%d %d\n", ieids[i], cid[pa[i]]);
+	else for(Id i = 0;i < n;i ++) if(similar_degree[i] >= miu)
+		fprintf(fout, "%d %d\n", i, cid[pa[i]]);
 
-	for(Id i = 0;i < n;i ++) if(similar_degree[i] >= miu) {
-		fprintf(fout, "c %d %d\n", i, cid[pa[i]]);
-	}
 
-	sort(noncore_cluster.begin(), noncore_cluster.end());
-	noncore_cluster.erase(unique(noncore_cluster.begin(), noncore_cluster.end()), noncore_cluster.end());
-	for(Id i = 0;i < noncore_cluster.size();i ++) {
-		fprintf(fout, "n %d %d\n", noncore_cluster[i].second, noncore_cluster[i].first);
+	if(!noncore_cluster.empty()) {
+		fputs("\n# Non-core clusters ---\n", fout);
+		sort(noncore_cluster.begin(), noncore_cluster.end());
+		noncore_cluster.erase(unique(noncore_cluster.begin(), noncore_cluster.end()), noncore_cluster.end());
+		if(!ieids.empty())
+			for(Id i = 0;i < noncore_cluster.size();i ++)
+				fprintf(fout, "%d %d\n", ieids[noncore_cluster[i].second], noncore_cluster[i].first);
+		else for(Id i = 0;i < noncore_cluster.size();i ++)
+			fprintf(fout, "%d %d\n", noncore_cluster[i].second, noncore_cluster[i].first);
 	}
 
 	fclose(fout);

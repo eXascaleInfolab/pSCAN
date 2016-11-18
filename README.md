@@ -5,7 +5,7 @@ The paper: *["pSCAN: Fast and Exact Structural Graph Clustering"](https://www.cs
 Author: Dr. [Lijun Chang](https://www.cse.unsw.edu.au/~ljchang/) <ljchang@cse.unsw.edu.au>
 
 This is the refactored version of the pScan, the unsafe code and original data structures were NOT modified. The I/O formats are extended to be natively applicable for the [PyCaBeM](https://github.com/eXascaleInfolab/PyCABeM) clustering benchmark.  
-Modified by Artem Lutov <artem@exascale.info>
+Extended by Artem Lutov <artem@exascale.info>
 
 # Usage
 ```
@@ -19,7 +19,7 @@ Usage: pSCAN [OPTIONS]... [input_network]...
 input_network  - the input graph specified as either a file in the NSL format,
 or a directory containing "b_degree.bin" and "b_adj.bin" binary files. If
 the format is not specified explicitly then NSL file is expected and whether it
-is NSA or NSE is identified by the file extension.
+is NSA or NSE is identified by the file extension or header.
 
   -h, --help           Print help and exit
   -V, --version        Print version and exit
@@ -51,7 +51,7 @@ The input network to be clustered is specified either in NSL (nsa/nse) format by
 	```
 2. Binary format:
   - Specification of the network properties and nodes (vertices) degrees, `b_degree.bin`:
-  
+
 	```
 	4  // <id_len_in_bytes>
 	13 // <nodes_number> (n)
@@ -62,7 +62,7 @@ The input network to be clustered is specified either in NSL (nsa/nse) format by
 	3  // <noden_degree>
 	```
   - Spase separated List of neigbours for each node in a new line, `b_adj.bin`:
-  
+
 	```
 	1 2 3 4 // neighbours of vertex 0
 	0 2 3   // neighbours of vertex 1

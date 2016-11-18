@@ -6,7 +6,7 @@ version "0.2"
 purpose "Clusters input network considering overlaps and building Exact Structural Graph"
 
 #usage "onmi [OPTIONS] clsfile1 clsfile2"
-description "input_network  - the input graph specified as either a file in the NSL format, or a directory containing \"b_degree.bin\" and \"b_adj.bin\" binary files. If the format is not specified explicitly then NSL file is expected and whether it is NSA or NSE is identified by the file extension."
+description "input_network  - the input graph specified as either a file in the NSL format, or a directory containing \"b_degree.bin\" and \"b_adj.bin\" binary files. If the format is not specified explicitly then NSL file is expected and whether it is NSA or NSE is identified by the file extension or header."
 
 # Input
 option  "format" f  "format of the input graph"  values="BIN","NSA","NSE" enum
@@ -22,7 +22,7 @@ option  "mu" m  "size threshold"  int default="3"
 option  "legacy" l  "output clustering in the legacy pSCAN format instead of the standard NSL"  flag off
 option  "output" o  "output file if the resulting clustering should be saved"  string
 
-args "--unamed-opts=input_network"   # Allow input files to be unnamed parameters
+args "--default-optional --unamed-opts=input_network"   # Allow input files to be unnamed parameters
 
 
 # Basic structure, see https://www.gnu.org/software/gengetopt/gengetopt.html#Basic-Usage
