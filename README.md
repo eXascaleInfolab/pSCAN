@@ -32,7 +32,8 @@ To update/extend the input parameters just modify `args.ggo` and run `GenerateAr
 $ ./pscan -h
 pSCAN 0.2
 
-Clusters input network considering overlaps and building Exact Structural Graph
+Clusters unweighted undirected input network (graph) considering overlaps and
+building Exact Structural Graph
 
 Usage: pSCAN [OPTIONS]... [input_network]...
 
@@ -62,7 +63,7 @@ For example
 ```
 
 ## Input
-The input network to be clustered is specified either in NSL (nsa/nse) format by 2 BINARY files:
+The undirected unweighted input network to be clustered is specified either in the NSL (nsa/nse) format or by the 2 BINARY files:
 
 1. NSL format (nsa - arcs, directed network; nse - edges, undirected network) specifies network links is each line of the file as node ids separated by the space delimiter:
 
@@ -87,14 +88,14 @@ The input network to be clustered is specified either in NSL (nsa/nse) format by
 	...
 	3  // <noden_degree>
 	```
-  - Spase separated List of neigbours for each node in a new line, `b_adj.bin`:
+  - Space separated List of neighbors for each node in a new line, `b_adj.bin`:
 
 	```
-	1 2 3 4 // neighbours of vertex 0
-	0 2 3   // neighbours of vertex 1
+	1 2 3 4 // neighbors of vertex 0
+	0 2 3   // neighbors of vertex 1
 	...
 	```
-  
+
 ## Output
 The CNL (clusters nodes list) output is a standard format, generalization of the Stanford SNAP ground-truth communities. It is an input format for various NMI-evaluation algorithms. Each line of the file corresponds to the single resulting cluster, where member nodes are specified separated by the space/tab with optional share. For example:
 ```

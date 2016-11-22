@@ -3,7 +3,7 @@
 package "pSCAN"
 version "0.2"
 
-purpose "Clusters input network considering overlaps and building Exact Structural Graph"
+purpose "Clusters unweighted undirected input network (graph) considering overlaps and building Exact Structural Graph"
 
 #usage "onmi [OPTIONS] clsfile1 clsfile2"
 description "input_network  - the input graph specified as either a file in the NSL format, or a directory containing \"b_degree.bin\" and \"b_adj.bin\" binary files. If the format is not specified explicitly then NSL file is expected and whether it is NSA or NSE is identified by the file extension or header."

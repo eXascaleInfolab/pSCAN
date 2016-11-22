@@ -25,7 +25,7 @@
 
 #include "cmdline.h"
 
-const char *gengetopt_args_info_purpose = "Clusters input network considering overlaps and building Exact Structural Graph";
+const char *gengetopt_args_info_purpose = "Clusters unweighted undirected input network (graph) considering overlaps and\nbuilding Exact Structural Graph";
 
 const char *gengetopt_args_info_usage = "Usage: pSCAN [OPTIONS]... [input_network]...";
 
