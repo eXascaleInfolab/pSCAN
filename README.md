@@ -65,7 +65,7 @@ For example
 ## Input
 The undirected unweighted input network to be clustered is specified either in the NSL (nsa/nse) format or by the 2 BINARY files:
 
-1. NSL format (nsa - arcs, directed network; nse - edges, undirected network) specifies network links is each line of the file as node ids separated by the space delimiter:
+1. NSL format (nsa - arcs, directed network; nse - edges, undirected network) specifies network links in each line of the file as node ids separated by the space delimiter with optional `#` line comments and an optional header:
 
 	```
 	# Example Network .nse (edges - undirected)
