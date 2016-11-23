@@ -310,7 +310,7 @@ void Graph::loadNSL() {
 
 	// Parse the body
 	// Note: the processing is started from the read line
-    size_t iline = 0;  // Payload line index (internal id of the cluster)
+    size_t iline = 0;  // Payload line index, links counter
     do {
 		// Skip empty lines and comments
 		if(line.empty() || line[0] == '#')
@@ -329,13 +329,13 @@ void Graph::loadNSL() {
 		auto ies = eiids.find(sid);  // Index of the external src id
 		if(ies == eiids.end()) {
 			ies = eiids.emplace(sid, eiids.size()).first;
-			ieids.emplace(ieids.size(), sid);
+			ieids.emplace(ies->second, sid);
 			nodes.emplace_back();
 		}
 		auto ied = eiids.find(did);  // Index of the external dst id
 		if(ied == eiids.end()) {
 			ied = eiids.emplace(did, eiids.size()).first;
-			ieids.emplace(ieids.size(), did);
+			ieids.emplace(ied->second, did);
 			nodes.emplace_back();
 		}
 		nodes[ies->second].insert(ied->second);
