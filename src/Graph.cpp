@@ -350,10 +350,14 @@ void Graph::loadNSL() {
 		&& "Node mappings are not synchronized");
 
 	// Initialize internal data structures using nodes
-	if(!n)
+	assert((!n || n == nodes.size()) && "Nodes size validation failed");
+	if(n != nodes.size())
 		n = nodes.size();
-	if(!m)
-		m = iline * (1 + (inpfmt == format_arg_NSE));
+
+	const size_t  arcsnum = iline * (1 + (inpfmt == format_arg_NSE));
+	assert((!m || m == arcsnum) && "Arcs size validation failed");
+	if(m != arcsnum)
+		m = arcsnum;
 
 	if(reverse)
 		delete[] reverse;
