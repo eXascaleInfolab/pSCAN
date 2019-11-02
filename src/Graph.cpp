@@ -256,6 +256,7 @@ void Graph::loadNSL() {
 			break;
 
 		// 1. Replace the staring comment mark '#' with space to allow "#clusters:"
+		line[0] = '#';
 		// 2. Replace ':' with space to allow "Clusters:<clsnum>"
 		for(size_t pos = 0; pos != string::npos; pos = line.find(':', pos + 1))
 			line[pos] = ' ';
@@ -280,9 +281,9 @@ void Graph::loadNSL() {
 					inpfmt = format_arg_NSA;
 				else if(inpfmt != format_arg_NSA && !strcmp(tok, "edges"))
 					inpfmt = format_arg_NSE;
-				else throw domain_error(string(tok).insert(0, "The file format (")
+				else throw domain_error(string("The file format (").append(tok)
 						.append(") is either inconsistent with the expected one(")
-						+= to_string(inpfmt).append(") or not specified at all\n"));
+						+= to_string(inpfmt).append(")\n"));
 				tok = strtok(nullptr, " \t");
 				if(tok) {
 					// Note: optional trailing ',' is allowed here
@@ -296,8 +297,6 @@ void Graph::loadNSL() {
 				}
 			}
 		}
-		// Get the following line to unify the payload processing
-		getline(finp, line);
 	}
 	assert((inpfmt == format_arg_NSE || inpfmt == format_arg_NSA) && "Unexpected inpfmt");
 
