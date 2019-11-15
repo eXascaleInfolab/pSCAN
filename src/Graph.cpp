@@ -255,14 +255,14 @@ void Graph::loadNSL() {
 		if(line[0] != '#')
 			break;
 
-		// 1. Replace the staring comment mark '#' with space to allow "#clusters:"
-		line[0] = ' ';
+		//// 1. Replace the staring comment mark '#' with space to allow "#clusters:"
+		//line[0] = ' ';
 		// 2. Replace ':' with space to allow "Clusters:<clsnum>"
 		for(size_t pos = 0; pos != string::npos; pos = line.find(':', pos + 1))
 			line[pos] = ' ';
 
 		// Parse nodes num
-        char *tok = strtok(const_cast<char*>(line.data()), " \t");
+        char *tok = strtok(const_cast<char*>(line.data()) + 1, " \t");  // Note: +1 to omit the starting '#'
         if(!tok)
 			continue;
 		tolower(tok);
