@@ -154,19 +154,23 @@ void Graph::loadBinary() {
 	}
 
 	int tt;
-	fread(&tt, sizeof(int), 1, f);
-	if(tt != (int)sizeof(int)) {
-		printf("sizeof int is different: edge.bin(%d), machine(%d)\n", tt, (int)sizeof(int));
-		return ;
+	int err = fread(&tt, sizeof(int), 1, f);
+	if(err || tt != (int)sizeof(int)) {
+		if(err)
+			perror("Parsing failed");
+		else
+			printf("Unexpected values, sizeof int is different: edge.bin(%d), machine(%d)\n"
+				, tt, (int)sizeof(int));
+		return;
 	}
-	fread(&n, sizeof(int), 1, f);
-	fread(&m, sizeof(int), 1, f);
-
-	// printf("\tn = %u; m = %u\n", n, m/2);
+	if(fread(&n, sizeof(int), 1, f) || fread(&m, sizeof(int), 1, f))
+		perror("Parsing failed");
+	//printf("\tn = %u; m = %u\n", err, n, m/2);
 
 	if(!degree)
 		degree = new Degree[n];
-	fread(degree, sizeof(unsigned), n, f);  // ATTENTION: degrees are specified as "unsigned int" in the input file
+	if(fread(degree, sizeof(unsigned), n, f))  // ATTENTION: degrees are specified as "unsigned int" in the input file
+		perror("Parsing failed");
 
 #ifdef _DEBUG_
 	long long sum = 0;
@@ -199,8 +203,11 @@ void Graph::loadBinary() {
 	pstart[0] = 0;
 	for(Id i = 0; i < n; i++) {
 		//printf("%d %d\n", i, degree[i]);
-		if(degree[i] > 0)
-			fread(buf, sizeof(Degree), degree[i], f);
+		if(degree[i] > 0) {
+			err = fread(buf, sizeof(Degree), degree[i], f);
+			if(err)
+				break;
+		}
 
 		for(Degree j = 0; j < degree[i]; j++)
 			edges[pstart[i] + j] = buf[j];
@@ -213,6 +220,8 @@ void Graph::loadBinary() {
 	delete[] buf;
 
 	fclose(f);
+	if(err)
+		perror("Parsing failed");
 }
 
 void Graph::loadNSL() {
